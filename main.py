@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 import customtkinter as ctk
 
-ctk.set_appearance_mode("dark")
+ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
 from app import App
@@ -16,7 +16,7 @@ from app import App
 
 def main():
     root = ctk.CTk()
-    root.title("Customer Dashboard")
+    root.title("Ajay's Customer Dashboard")
     root.geometry("1200x750")
     root.minsize(960, 640)
 

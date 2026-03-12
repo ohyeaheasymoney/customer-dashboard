@@ -11,7 +11,7 @@ import database as db
 
 class DashboardTab(ctk.CTkFrame):
     def __init__(self, parent, conn):
-        super().__init__(parent, fg_color="#1F2937")
+        super().__init__(parent, fg_color="#F0F4F8")
         self.conn = conn
         self._build_ui()
 
@@ -21,10 +21,10 @@ class DashboardTab(ctk.CTkFrame):
         header.pack(fill="x", padx=28, pady=(24, 4))
         ctk.CTkLabel(header, text="Dashboard",
                      font=ctk.CTkFont(size=22, weight="bold"),
-                     text_color="#F9FAFB").pack(anchor="w")
+                     text_color="#1E293B").pack(anchor="w")
         ctk.CTkLabel(header, text="Overview of your customer pipeline",
                      font=ctk.CTkFont(size=12),
-                     text_color="#9CA3AF").pack(anchor="w", pady=(2, 0))
+                     text_color="#64748B").pack(anchor="w", pady=(2, 0))
 
         # ── Stat cards row ─────────────────────────────────────────────
         self.stats_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -32,10 +32,10 @@ class DashboardTab(ctk.CTkFrame):
 
         self.card_vars = {}
         cards = [
-            ("Total Customers", "total_customers", "#3B82F6"),
-            ("Pending",         "pending_follow_ups", "#F59E0B"),
-            ("Overdue",         "overdue_follow_ups", "#EF4444"),
-            ("Completed",       "completed_follow_ups", "#10B981"),
+            ("Total Customers", "total_customers", "#2563EB"),
+            ("Pending",         "pending_follow_ups", "#D97706"),
+            ("Overdue",         "overdue_follow_ups", "#DC2626"),
+            ("Completed",       "completed_follow_ups", "#059669"),
         ]
         for i, (label, key, accent) in enumerate(cards):
             self.stats_frame.columnconfigure(i, weight=1, uniform="card")
@@ -51,10 +51,9 @@ class DashboardTab(ctk.CTkFrame):
 
     def _make_stat_card(self, parent, label_text, accent_color):
         """Create a card with a colored left accent bar."""
-        # Outer card frame
-        card = ctk.CTkFrame(parent, fg_color="#374151", corner_radius=12)
+        card = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=12,
+                            border_width=1, border_color="#E2E8F0")
 
-        # Inner layout with accent stripe
         inner = ctk.CTkFrame(card, fg_color="transparent")
         inner.pack(fill="both", expand=True, padx=0, pady=0)
 
@@ -70,21 +69,21 @@ class DashboardTab(ctk.CTkFrame):
         value_var = tk.StringVar(value="0")
         ctk.CTkLabel(content, textvariable=value_var,
                      font=ctk.CTkFont(size=28, weight="bold"),
-                     text_color="#F9FAFB").pack(anchor="w")
+                     text_color="#1E293B").pack(anchor="w")
         ctk.CTkLabel(content, text=label_text,
                      font=ctk.CTkFont(size=11),
-                     text_color="#9CA3AF").pack(anchor="w", pady=(4, 0))
+                     text_color="#64748B").pack(anchor="w", pady=(4, 0))
 
         # Small colored dot indicator
         dot_frame = ctk.CTkFrame(content, fg_color="transparent")
         dot_frame.pack(anchor="w", pady=(8, 0))
-        dot = tk.Canvas(dot_frame, width=8, height=8, bg="#374151",
+        dot = tk.Canvas(dot_frame, width=8, height=8, bg="#FFFFFF",
                         highlightthickness=0)
         dot.create_oval(1, 1, 7, 7, fill=accent_color, outline=accent_color)
         dot.pack(side="left")
         ctk.CTkLabel(dot_frame, text=label_text.split()[0],
                      font=ctk.CTkFont(size=10),
-                     text_color="#6B7280").pack(side="left", padx=(4, 0))
+                     text_color="#94A3B8").pack(side="left", padx=(4, 0))
 
         return card, value_var
 
@@ -108,23 +107,23 @@ class DashboardTab(ctk.CTkFrame):
         except ImportError:
             ctk.CTkLabel(self.charts_frame,
                          text="Install matplotlib for charts:  pip install matplotlib",
-                         text_color="#9CA3AF",
+                         text_color="#64748B",
                          font=ctk.CTkFont(size=11)).pack(pady=30)
             return
 
-        bg_color = "#1F2937"
-        surface = "#374151"
-        text_color = "#F9FAFB"
-        text_sec = "#9CA3AF"
-        border = "#4B5563"
+        bg_color = "#F0F4F8"
+        surface = "#FFFFFF"
+        text_color = "#1E293B"
+        text_sec = "#64748B"
+        border = "#E2E8F0"
 
         fig = Figure(figsize=(11, 4), dpi=96, facecolor=bg_color)
         fig.subplots_adjust(left=0.06, right=0.97, top=0.88, bottom=0.18, wspace=0.30)
 
         chart_colors = {
-            "pending": "#F59E0B",
-            "completed": "#10B981",
-            "company": "#3B82F6",
+            "pending": "#D97706",
+            "completed": "#059669",
+            "company": "#2563EB",
         }
 
         # ── Chart 1: Follow-ups over time ──────────────────────────────

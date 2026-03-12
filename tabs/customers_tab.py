@@ -10,7 +10,7 @@ from export import export_customers_csv, export_customer_report_pdf
 
 class CustomersTab(ctk.CTkFrame):
     def __init__(self, parent, conn, app):
-        super().__init__(parent, fg_color="#1F2937")
+        super().__init__(parent, fg_color="#F0F4F8")
         self.conn = conn
         self.app = app
         self._build_ui()
@@ -24,28 +24,32 @@ class CustomersTab(ctk.CTkFrame):
         header_left.pack(side="left")
         ctk.CTkLabel(header_left, text="Customers",
                      font=ctk.CTkFont(size=22, weight="bold"),
-                     text_color="#F9FAFB").pack(anchor="w")
+                     text_color="#1E293B").pack(anchor="w")
 
         # Action buttons in header
         btn_group = ctk.CTkFrame(header, fg_color="transparent")
         btn_group.pack(side="right")
         ctk.CTkButton(btn_group, text="+ Add Customer",
                       corner_radius=8, height=34,
+                      fg_color="#2563EB", hover_color="#1D4ED8",
                       font=ctk.CTkFont(size=12, weight="bold"),
                       command=self._add_customer).pack(side="left", padx=(0, 8))
         ctk.CTkButton(btn_group, text="Export CSV",
                       corner_radius=8, height=34,
-                      fg_color="#374151", hover_color="#4B5563",
+                      fg_color="#E2E8F0", hover_color="#CBD5E1",
+                      text_color="#1E293B",
                       font=ctk.CTkFont(size=12),
                       command=self._export_csv).pack(side="left", padx=(0, 8))
         ctk.CTkButton(btn_group, text="Export PDF",
                       corner_radius=8, height=34,
-                      fg_color="#374151", hover_color="#4B5563",
+                      fg_color="#E2E8F0", hover_color="#CBD5E1",
+                      text_color="#1E293B",
                       font=ctk.CTkFont(size=12),
                       command=self._export_pdf).pack(side="left")
 
         # ── Search / Filter bar ────────────────────────────────────────
-        filter_card = ctk.CTkFrame(self, fg_color="#374151", corner_radius=12)
+        filter_card = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12,
+                                   border_width=1, border_color="#E2E8F0")
         filter_card.pack(fill="x", padx=28, pady=(14, 0))
 
         filter_inner = ctk.CTkFrame(filter_card, fg_color="transparent")
@@ -54,7 +58,7 @@ class CustomersTab(ctk.CTkFrame):
         # Search
         ctk.CTkLabel(filter_inner, text="Search",
                      font=ctk.CTkFont(size=11),
-                     text_color="#9CA3AF").grid(row=0, column=0, sticky="w", padx=(0, 6))
+                     text_color="#64748B").grid(row=0, column=0, sticky="w", padx=(0, 6))
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self.refresh())
         search_entry = ctk.CTkEntry(filter_inner, textvariable=self.search_var,
@@ -65,7 +69,7 @@ class CustomersTab(ctk.CTkFrame):
         # Category
         ctk.CTkLabel(filter_inner, text="Category",
                      font=ctk.CTkFont(size=11),
-                     text_color="#9CA3AF").grid(row=0, column=2, sticky="w", padx=(0, 6))
+                     text_color="#64748B").grid(row=0, column=2, sticky="w", padx=(0, 6))
         self.cat_var = tk.StringVar(value="All")
         self.cat_combo = ctk.CTkComboBox(
             filter_inner,
@@ -79,7 +83,7 @@ class CustomersTab(ctk.CTkFrame):
         # Tag
         ctk.CTkLabel(filter_inner, text="Tag",
                      font=ctk.CTkFont(size=11),
-                     text_color="#9CA3AF").grid(row=0, column=4, sticky="w", padx=(0, 6))
+                     text_color="#64748B").grid(row=0, column=4, sticky="w", padx=(0, 6))
         self.tag_var = tk.StringVar(value="All")
         self.tag_combo = ctk.CTkComboBox(
             filter_inner,
@@ -93,7 +97,7 @@ class CustomersTab(ctk.CTkFrame):
         # Company
         ctk.CTkLabel(filter_inner, text="Company",
                      font=ctk.CTkFont(size=11),
-                     text_color="#9CA3AF").grid(row=0, column=6, sticky="w", padx=(0, 6))
+                     text_color="#64748B").grid(row=0, column=6, sticky="w", padx=(0, 6))
         self.company_var = tk.StringVar(value="All")
         self.company_combo = ctk.CTkComboBox(
             filter_inner,
@@ -107,11 +111,11 @@ class CustomersTab(ctk.CTkFrame):
         filter_inner.columnconfigure(1, weight=1)
 
         # ── Treeview ───────────────────────────────────────────────────
-        tree_frame = ctk.CTkFrame(self, fg_color="#374151", corner_radius=12)
+        tree_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12,
+                                  border_width=1, border_color="#E2E8F0")
         tree_frame.pack(fill="both", expand=True, padx=28, pady=(12, 20))
 
-        # Inner frame for treeview (no corner radius on treeview itself)
-        tree_inner = tk.Frame(tree_frame, bg="#374151")
+        tree_inner = tk.Frame(tree_frame, bg="#FFFFFF")
         tree_inner.pack(fill="both", expand=True, padx=4, pady=4)
 
         cols = ("name", "company", "phone", "email", "category", "tags")
@@ -125,9 +129,9 @@ class CustomersTab(ctk.CTkFrame):
                               command=lambda c=col: self._sort_column(c))
             self.tree.column(col, width=col_widths.get(col, 120), minwidth=60)
 
-        # Alternating row colors for dark theme
-        self.tree.tag_configure("evenrow", background="#374151", foreground="#F9FAFB")
-        self.tree.tag_configure("oddrow", background="#2D3748", foreground="#F9FAFB")
+        # Alternating row colors for light theme
+        self.tree.tag_configure("evenrow", background="#FFFFFF", foreground="#1E293B")
+        self.tree.tag_configure("oddrow", background="#F1F5F9", foreground="#1E293B")
 
         scrollbar = ttk.Scrollbar(tree_inner, orient="vertical",
                                   command=self.tree.yview)
@@ -139,8 +143,8 @@ class CustomersTab(ctk.CTkFrame):
 
         # Context menu
         self.menu = tk.Menu(self, tearoff=0,
-                            bg="#1F2937", fg="#F9FAFB",
-                            activebackground="#3B82F6", activeforeground="#FFFFFF")
+                            bg="#FFFFFF", fg="#1E293B",
+                            activebackground="#2563EB", activeforeground="#FFFFFF")
         self.menu.add_command(label="  Open Detail", command=self._open_detail)
         self.menu.add_command(label="  Edit", command=self._edit_customer)
         self.menu.add_separator()
@@ -288,7 +292,7 @@ class CustomerDialog(ctk.CTkToplevel):
         ctk.CTkLabel(self,
                      text="Update the details below" if customer else "Fill in the customer details",
                      font=ctk.CTkFont(size=12),
-                     text_color="#9CA3AF").pack(anchor="w", padx=24, pady=(0, 12))
+                     text_color="#64748B").pack(anchor="w", padx=24, pady=(0, 12))
 
         # Form
         form = ctk.CTkFrame(self, fg_color="transparent")
@@ -300,7 +304,7 @@ class CustomerDialog(ctk.CTkToplevel):
         for i, (label, key) in enumerate(fields):
             ctk.CTkLabel(form, text=label,
                          font=ctk.CTkFont(size=12),
-                         text_color="#9CA3AF").grid(
+                         text_color="#64748B").grid(
                 row=i, column=0, padx=(0, 14), pady=6, sticky="e")
             entry = ctk.CTkEntry(form, width=280, corner_radius=8,
                                   placeholder_text=f"Enter {label.lower()}...")
@@ -312,7 +316,7 @@ class CustomerDialog(ctk.CTkToplevel):
         row = len(fields)
         ctk.CTkLabel(form, text="Category",
                      font=ctk.CTkFont(size=12),
-                     text_color="#9CA3AF").grid(
+                     text_color="#64748B").grid(
             row=row, column=0, padx=(0, 14), pady=6, sticky="e")
         self.cat_var = tk.StringVar(
             value=customer.get("category", "Active") if customer else "Active")
@@ -332,7 +336,7 @@ class CustomerDialog(ctk.CTkToplevel):
 
         ctk.CTkLabel(tag_section, text="Tags",
                      font=ctk.CTkFont(size=12, weight="bold"),
-                     text_color="#9CA3AF").pack(anchor="w")
+                     text_color="#64748B").pack(anchor="w")
 
         tag_input_row = ctk.CTkFrame(tag_section, fg_color="transparent")
         tag_input_row.pack(fill="x", pady=(6, 4))
@@ -342,17 +346,19 @@ class CustomerDialog(ctk.CTkToplevel):
         self.tag_entry_widget.pack(side="left", padx=(0, 6))
         ctk.CTkButton(tag_input_row, text="Add", width=60, height=30,
                       corner_radius=6,
+                      fg_color="#2563EB", hover_color="#1D4ED8",
                       command=self._add_tag).pack(side="left", padx=(0, 4))
         ctk.CTkButton(tag_input_row, text="Remove", width=70, height=30,
                       corner_radius=6,
-                      fg_color="#374151", hover_color="#4B5563",
+                      fg_color="#E2E8F0", hover_color="#CBD5E1",
+                      text_color="#1E293B",
                       command=self._remove_tag).pack(side="left")
 
-        list_frame = tk.Frame(tag_section, bg="#374151")
+        list_frame = tk.Frame(tag_section, bg="#F8FAFC")
         list_frame.pack(fill="x", pady=(4, 0))
-        self.tag_listbox = tk.Listbox(list_frame, height=4, bg="#374151",
-                                       fg="#F9FAFB",
-                                       selectbackground="#3B82F6",
+        self.tag_listbox = tk.Listbox(list_frame, height=4, bg="#F8FAFC",
+                                       fg="#1E293B",
+                                       selectbackground="#2563EB",
                                        selectforeground="#FFFFFF",
                                        relief="flat", borderwidth=4,
                                        font=("Helvetica", 10))
@@ -365,10 +371,12 @@ class CustomerDialog(ctk.CTkToplevel):
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(fill="x", padx=24, pady=(16, 16))
         ctk.CTkButton(btn_frame, text="Cancel", width=90,
-                      fg_color="#374151", hover_color="#4B5563",
+                      fg_color="#E2E8F0", hover_color="#CBD5E1",
+                      text_color="#1E293B",
                       corner_radius=8,
                       command=self.destroy).pack(side="right", padx=(8, 0))
         ctk.CTkButton(btn_frame, text="Save", width=90,
+                      fg_color="#2563EB", hover_color="#1D4ED8",
                       corner_radius=8,
                       command=self._save).pack(side="right")
 

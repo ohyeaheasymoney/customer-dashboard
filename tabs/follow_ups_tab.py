@@ -11,7 +11,7 @@ from export import export_follow_ups_csv
 
 class FollowUpsTab(ctk.CTkFrame):
     def __init__(self, parent, conn, app):
-        super().__init__(parent, fg_color="#1F2937")
+        super().__init__(parent, fg_color="#F0F4F8")
         self.conn = conn
         self.app = app
         self._build_ui()
@@ -22,15 +22,17 @@ class FollowUpsTab(ctk.CTkFrame):
         header.pack(fill="x", padx=28, pady=(24, 4))
         ctk.CTkLabel(header, text="Follow-ups",
                      font=ctk.CTkFont(size=22, weight="bold"),
-                     text_color="#F9FAFB").pack(side="left")
+                     text_color="#1E293B").pack(side="left")
         ctk.CTkButton(header, text="Export CSV", width=110, height=34,
                       corner_radius=8,
-                      fg_color="#374151", hover_color="#4B5563",
+                      fg_color="#E2E8F0", hover_color="#CBD5E1",
+                      text_color="#1E293B",
                       font=ctk.CTkFont(size=12),
                       command=self._export_csv).pack(side="right")
 
         # ── Filter bar ─────────────────────────────────────────────────
-        filter_card = ctk.CTkFrame(self, fg_color="#374151", corner_radius=12)
+        filter_card = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12,
+                                   border_width=1, border_color="#E2E8F0")
         filter_card.pack(fill="x", padx=28, pady=(14, 0))
 
         filter_inner = ctk.CTkFrame(filter_card, fg_color="transparent")
@@ -39,7 +41,7 @@ class FollowUpsTab(ctk.CTkFrame):
         # Status
         ctk.CTkLabel(filter_inner, text="Status",
                      font=ctk.CTkFont(size=11),
-                     text_color="#9CA3AF").grid(row=0, column=0, sticky="w", padx=(0, 6))
+                     text_color="#64748B").grid(row=0, column=0, sticky="w", padx=(0, 6))
         self.status_var = tk.StringVar(value="All")
         self.status_combo = ctk.CTkComboBox(
             filter_inner,
@@ -53,7 +55,7 @@ class FollowUpsTab(ctk.CTkFrame):
         # Type
         ctk.CTkLabel(filter_inner, text="Type",
                      font=ctk.CTkFont(size=11),
-                     text_color="#9CA3AF").grid(row=0, column=2, sticky="w", padx=(0, 6))
+                     text_color="#64748B").grid(row=0, column=2, sticky="w", padx=(0, 6))
         self.type_var = tk.StringVar(value="All")
         self.type_combo = ctk.CTkComboBox(
             filter_inner,
@@ -67,7 +69,7 @@ class FollowUpsTab(ctk.CTkFrame):
         # Date range
         ctk.CTkLabel(filter_inner, text="From",
                      font=ctk.CTkFont(size=11),
-                     text_color="#9CA3AF").grid(row=0, column=4, sticky="w", padx=(0, 6))
+                     text_color="#64748B").grid(row=0, column=4, sticky="w", padx=(0, 6))
         self.from_var = tk.StringVar()
         ctk.CTkEntry(filter_inner, textvariable=self.from_var, width=110,
                      corner_radius=8,
@@ -76,7 +78,7 @@ class FollowUpsTab(ctk.CTkFrame):
 
         ctk.CTkLabel(filter_inner, text="To",
                      font=ctk.CTkFont(size=11),
-                     text_color="#9CA3AF").grid(row=0, column=6, sticky="w", padx=(0, 6))
+                     text_color="#64748B").grid(row=0, column=6, sticky="w", padx=(0, 6))
         self.to_var = tk.StringVar()
         ctk.CTkEntry(filter_inner, textvariable=self.to_var, width=110,
                      corner_radius=8,
@@ -85,15 +87,16 @@ class FollowUpsTab(ctk.CTkFrame):
 
         ctk.CTkButton(filter_inner, text="Apply Dates", width=100, height=30,
                       corner_radius=6,
-                      fg_color="#3B82F6", hover_color="#2563EB",
+                      fg_color="#2563EB", hover_color="#1D4ED8",
                       font=ctk.CTkFont(size=11),
                       command=self.refresh).grid(row=0, column=8)
 
         # ── Treeview ───────────────────────────────────────────────────
-        tree_frame = ctk.CTkFrame(self, fg_color="#374151", corner_radius=12)
+        tree_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12,
+                                  border_width=1, border_color="#E2E8F0")
         tree_frame.pack(fill="both", expand=True, padx=28, pady=(12, 20))
 
-        tree_inner = tk.Frame(tree_frame, bg="#374151")
+        tree_inner = tk.Frame(tree_frame, bg="#FFFFFF")
         tree_inner.pack(fill="both", expand=True, padx=4, pady=4)
 
         cols = ("customer_name", "due_date", "type", "status", "description")
@@ -106,17 +109,17 @@ class FollowUpsTab(ctk.CTkFrame):
             self.tree.heading(col, text=col.replace("_", " ").title())
             self.tree.column(col, width=col_widths.get(col, 140), minwidth=60)
 
-        # Color-coded row backgrounds for dark theme
+        # Color-coded row backgrounds for light theme
         self.tree.tag_configure("overdue",
-                                background="#7F1D1D", foreground="#FCA5A5")
+                                background="#FEE2E2", foreground="#991B1B")
         self.tree.tag_configure("upcoming",
-                                background="#78350F", foreground="#FCD34D")
+                                background="#FEF3C7", foreground="#92400E")
         self.tree.tag_configure("completed",
-                                background="#1F2937", foreground="#6B7280")
+                                background="#F1F5F9", foreground="#94A3B8")
         self.tree.tag_configure("evenrow",
-                                background="#374151", foreground="#F9FAFB")
+                                background="#FFFFFF", foreground="#1E293B")
         self.tree.tag_configure("oddrow",
-                                background="#2D3748", foreground="#F9FAFB")
+                                background="#F1F5F9", foreground="#1E293B")
 
         scrollbar = ttk.Scrollbar(tree_inner, orient="vertical",
                                   command=self.tree.yview)
@@ -126,8 +129,8 @@ class FollowUpsTab(ctk.CTkFrame):
 
         # Context menu
         self.menu = tk.Menu(self, tearoff=0,
-                            bg="#1F2937", fg="#F9FAFB",
-                            activebackground="#3B82F6", activeforeground="#FFFFFF")
+                            bg="#FFFFFF", fg="#1E293B",
+                            activebackground="#2563EB", activeforeground="#FFFFFF")
         self.menu.add_command(label="  Mark Completed",
                               command=self._mark_completed)
         self.menu.add_command(label="  Edit", command=self._edit)

@@ -18,23 +18,21 @@ from tabs.customer_detail_tab import CustomerDetailTab
 DB_PATH = os.path.join(os.path.dirname(__file__), "customers.db")
 BACKUP_DIR = os.path.join(os.path.dirname(__file__), "backups")
 
-# Color palette
+# Color palette — white + royal-blue
 COLORS = {
-    "sidebar_bg": "#111827",
-    "sidebar_hover": "#1F2937",
-    "sidebar_active": "#1E3A5F",
-    "content_bg_light": "#F0F2F5",
-    "content_bg_dark": "#1F2937",
-    "card_light": "#FFFFFF",
-    "card_dark": "#374151",
-    "primary": "#3B82F6",
-    "success": "#10B981",
-    "warning": "#F59E0B",
-    "danger": "#EF4444",
-    "text_primary_dark": "#F9FAFB",
-    "text_primary_light": "#1E293B",
-    "text_secondary_dark": "#9CA3AF",
-    "text_secondary_light": "#64748B",
+    "sidebar_bg": "#1E3A8A",
+    "sidebar_hover": "#1E40AF",
+    "sidebar_active": "#2563EB",
+    "content_bg": "#F0F4F8",
+    "card": "#FFFFFF",
+    "primary": "#2563EB",
+    "primary_hover": "#1D4ED8",
+    "success": "#059669",
+    "warning": "#D97706",
+    "danger": "#DC2626",
+    "text": "#1E293B",
+    "text_dim": "#64748B",
+    "border": "#CBD5E1",
 }
 
 
@@ -44,30 +42,29 @@ def _configure_treeview_style():
     style.theme_use("clam")
 
     style.configure("Treeview",
-                    background="#374151",
-                    foreground="#F9FAFB",
-                    fieldbackground="#374151",
+                    background="#FFFFFF",
+                    foreground="#1E293B",
+                    fieldbackground="#FFFFFF",
                     borderwidth=0,
                     relief="flat",
                     rowheight=32,
                     font=("Helvetica", 10))
     style.configure("Treeview.Heading",
-                    background="#1F2937",
-                    foreground="#F9FAFB",
+                    background="#EFF6FF",
+                    foreground="#1E3A8A",
                     borderwidth=0,
                     relief="flat",
                     font=("Helvetica", 10, "bold"),
                     padding=(8, 6))
     style.map("Treeview",
-              background=[("selected", "#3B82F6")],
+              background=[("selected", "#2563EB")],
               foreground=[("selected", "#FFFFFF")])
     style.map("Treeview.Heading",
-              background=[("active", "#374151")])
+              background=[("active", "#DBEAFE")])
 
-    # Row tags
     style.configure("Vertical.TScrollbar",
-                    background="#374151",
-                    troughcolor="#1F2937",
+                    background="#E2E8F0",
+                    troughcolor="#F1F5F9",
                     borderwidth=0,
                     arrowsize=14)
 
@@ -137,21 +134,21 @@ class App(ctk.CTkFrame):
         title_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         title_frame.pack(fill="x", padx=16, pady=(20, 4))
 
-        ctk.CTkLabel(title_frame, text="CRM Dashboard",
+        ctk.CTkLabel(title_frame, text="Ajay's CRM",
                      font=ctk.CTkFont(size=18, weight="bold"),
                      text_color="#FFFFFF").pack(anchor="w")
-        ctk.CTkLabel(title_frame, text="Customer Management System",
+        ctk.CTkLabel(title_frame, text="Customer Dashboard",
                      font=ctk.CTkFont(size=11),
-                     text_color="#6B7280").pack(anchor="w", pady=(2, 0))
+                     text_color="#93C5FD").pack(anchor="w", pady=(2, 0))
 
         # Separator line
-        sep = ctk.CTkFrame(self.sidebar, fg_color="#374151", height=1)
+        sep = ctk.CTkFrame(self.sidebar, fg_color="#2563EB", height=1)
         sep.pack(fill="x", padx=16, pady=(16, 12))
 
         # Section label
         ctk.CTkLabel(self.sidebar, text="  MAIN MENU",
                      font=ctk.CTkFont(size=10, weight="bold"),
-                     text_color="#4B5563").pack(fill="x", padx=16, pady=(0, 6), anchor="w")
+                     text_color="#93C5FD").pack(fill="x", padx=16, pady=(0, 6), anchor="w")
 
         # Navigation buttons container
         self.nav_container = ctk.CTkFrame(self.sidebar, fg_color="transparent")
@@ -166,11 +163,11 @@ class App(ctk.CTkFrame):
         bottom.pack(side="bottom", fill="x", padx=16, pady=(0, 16))
         ctk.CTkLabel(bottom, text="v2.0  |  CustomTkinter",
                      font=ctk.CTkFont(size=10),
-                     text_color="#4B5563").pack(anchor="w")
+                     text_color="#93C5FD").pack(anchor="w")
 
     def _build_content(self):
         """Build the content area."""
-        self.content_frame = ctk.CTkFrame(self, fg_color="#1F2937",
+        self.content_frame = ctk.CTkFrame(self, fg_color=COLORS["content_bg"],
                                            corner_radius=0)
         self.content_frame.grid(row=0, column=1, sticky="nsew")
 
@@ -192,7 +189,7 @@ class App(ctk.CTkFrame):
                 row_frame, text=label,
                 fg_color="transparent",
                 hover_color=COLORS["sidebar_hover"],
-                text_color="#D1D5DB",
+                text_color="#DBEAFE",
                 anchor="w", height=36,
                 font=ctk.CTkFont(size=12),
                 corner_radius=6,
@@ -205,8 +202,8 @@ class App(ctk.CTkFrame):
             close_btn = ctk.CTkButton(
                 row_frame, text="\u2715", width=28, height=28,
                 fg_color="transparent",
-                hover_color="#EF4444",
-                text_color="#6B7280",
+                hover_color="#DC2626",
+                text_color="#93C5FD",
                 font=ctk.CTkFont(size=11),
                 corner_radius=4,
                 command=lambda c=cid: self.close_customer_detail(c)
@@ -219,7 +216,7 @@ class App(ctk.CTkFrame):
                 container, text=label,
                 fg_color="transparent",
                 hover_color=COLORS["sidebar_hover"],
-                text_color="#D1D5DB",
+                text_color="#DBEAFE",
                 anchor="w", height=40,
                 font=ctk.CTkFont(size=13),
                 corner_radius=6,
@@ -236,7 +233,7 @@ class App(ctk.CTkFrame):
         # Deactivate old nav button
         if self.active_page and self.active_page in self.nav_buttons:
             old_btn = self.nav_buttons[self.active_page]["button"]
-            old_btn.configure(fg_color="transparent", text_color="#D1D5DB")
+            old_btn.configure(fg_color="transparent", text_color="#DBEAFE")
 
         # Hide old page
         if self.active_page and self.active_page in self.pages:
@@ -256,14 +253,14 @@ class App(ctk.CTkFrame):
             page.refresh()
 
     def _build_menu(self):
-        menubar = tk.Menu(self.root, bg="#1F2937", fg="#F9FAFB",
-                          activebackground="#3B82F6", activeforeground="#FFFFFF",
+        menubar = tk.Menu(self.root, bg="#FFFFFF", fg="#1E293B",
+                          activebackground="#2563EB", activeforeground="#FFFFFF",
                           relief="flat", borderwidth=0)
         self.root.config(menu=menubar)
 
         file_menu = tk.Menu(menubar, tearoff=0,
-                            bg="#1F2937", fg="#F9FAFB",
-                            activebackground="#3B82F6", activeforeground="#FFFFFF")
+                            bg="#FFFFFF", fg="#1E293B",
+                            activebackground="#2563EB", activeforeground="#FFFFFF")
         menubar.add_cascade(label="  File  ", menu=file_menu)
         file_menu.add_command(label="  Email Settings...", command=self._email_settings)
         file_menu.add_separator()
@@ -309,14 +306,14 @@ class App(ctk.CTkFrame):
         if self.detail_separator:
             return
         self.detail_separator = ctk.CTkFrame(
-            self.detail_nav_container, fg_color="#374151", height=1
+            self.detail_nav_container, fg_color="#2563EB", height=1
         )
         self.detail_separator.pack(fill="x", padx=16, pady=(12, 4))
 
         self.detail_section_label = ctk.CTkLabel(
             self.detail_nav_container, text="  OPEN CUSTOMERS",
             font=ctk.CTkFont(size=10, weight="bold"),
-            text_color="#4B5563"
+            text_color="#93C5FD"
         )
         self.detail_section_label.pack(fill="x", padx=16, pady=(0, 4), anchor="w")
 
@@ -408,7 +405,7 @@ class SmtpSettingsDialog(ctk.CTkToplevel):
             anchor="w", padx=24, pady=(20, 2))
         ctk.CTkLabel(self, text="Configure your email server settings",
                      font=ctk.CTkFont(size=12),
-                     text_color="#9CA3AF").pack(anchor="w", padx=24, pady=(0, 12))
+                     text_color="#64748B").pack(anchor="w", padx=24, pady=(0, 12))
 
         # Form
         form = ctk.CTkFrame(self, fg_color="transparent")
@@ -427,7 +424,7 @@ class SmtpSettingsDialog(ctk.CTkToplevel):
         for i, (label, key) in enumerate(fields):
             ctk.CTkLabel(form, text=label,
                          font=ctk.CTkFont(size=12),
-                         text_color="#9CA3AF").grid(
+                         text_color="#64748B").grid(
                 row=i, column=0, padx=(0, 16), pady=6, sticky="e")
             entry = ctk.CTkEntry(form, width=280, corner_radius=8,
                                   placeholder_text=f"Enter {label.lower()}...")
@@ -442,18 +439,18 @@ class SmtpSettingsDialog(ctk.CTkToplevel):
         row = len(fields)
         ctk.CTkLabel(form, text="Presets",
                      font=ctk.CTkFont(size=12),
-                     text_color="#9CA3AF").grid(
+                     text_color="#64748B").grid(
             row=row, column=0, padx=(0, 16), pady=6, sticky="e")
         preset_frame = ctk.CTkFrame(form, fg_color="transparent")
         preset_frame.grid(row=row, column=1, pady=6, sticky="w")
         ctk.CTkButton(preset_frame, text="Gmail", width=80, height=30,
                       corner_radius=6,
-                      fg_color="#374151", hover_color="#4B5563",
+                      fg_color="#E2E8F0", hover_color="#CBD5E1", text_color="#1E293B",
                       command=lambda: self._preset("smtp.gmail.com", "587")).pack(
             side="left", padx=(0, 6))
         ctk.CTkButton(preset_frame, text="Outlook", width=80, height=30,
                       corner_radius=6,
-                      fg_color="#374151", hover_color="#4B5563",
+                      fg_color="#E2E8F0", hover_color="#CBD5E1", text_color="#1E293B",
                       command=lambda: self._preset("smtp.office365.com", "587")).pack(
             side="left")
 
@@ -461,14 +458,14 @@ class SmtpSettingsDialog(ctk.CTkToplevel):
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(fill="x", padx=24, pady=(20, 16))
         ctk.CTkButton(btn_frame, text="Cancel", width=90,
-                      fg_color="#374151", hover_color="#4B5563",
+                      fg_color="#E2E8F0", hover_color="#CBD5E1", text_color="#1E293B",
                       corner_radius=8,
                       command=self.destroy).pack(side="right", padx=(8, 0))
         ctk.CTkButton(btn_frame, text="Save", width=90,
                       corner_radius=8,
                       command=self._save).pack(side="right", padx=(8, 0))
         ctk.CTkButton(btn_frame, text="Test Connection", width=130,
-                      fg_color="#374151", hover_color="#4B5563",
+                      fg_color="#E2E8F0", hover_color="#CBD5E1", text_color="#1E293B",
                       corner_radius=8,
                       command=self._test).pack(side="right")
 

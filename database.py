@@ -66,6 +66,144 @@ def init_db(conn):
             created_at TEXT NOT NULL,
             FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS account_resources (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            name TEXT DEFAULT '',
+            email TEXT DEFAULT '',
+            phone TEXT DEFAULT '',
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS meeting_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            meeting_date TEXT NOT NULL,
+            audience TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS business_initiatives (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            section TEXT NOT NULL,
+            content TEXT DEFAULT '',
+            sort_order INTEGER DEFAULT 0,
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS contact_development (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            title TEXT DEFAULT '',
+            relationship TEXT DEFAULT 'Unknown',
+            influence TEXT DEFAULT 'Influencer',
+            phone TEXT DEFAULT '',
+            email TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS account_goals_meta (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL UNIQUE,
+            moonshot TEXT DEFAULT '',
+            objectives TEXT DEFAULT '',
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS account_goals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            term TEXT NOT NULL DEFAULT 'short',
+            goal TEXT DEFAULT '',
+            status TEXT DEFAULT 'Not Started',
+            notes TEXT DEFAULT '',
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS action_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            what TEXT DEFAULT '',
+            who TEXT DEFAULT '',
+            how TEXT DEFAULT '',
+            due_date TEXT DEFAULT '',
+            status TEXT DEFAULT 'On Track',
+            notes TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS cph_report (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            category TEXT NOT NULL,
+            month_1 REAL DEFAULT 0,
+            month_2 REAL DEFAULT 0,
+            month_3 REAL DEFAULT 0,
+            month_4 REAL DEFAULT 0,
+            month_5 REAL DEFAULT 0,
+            month_6 REAL DEFAULT 0,
+            month_7 REAL DEFAULT 0,
+            month_8 REAL DEFAULT 0,
+            month_9 REAL DEFAULT 0,
+            month_10 REAL DEFAULT 0,
+            month_11 REAL DEFAULT 0,
+            month_12 REAL DEFAULT 0,
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS hw_sw_landscape (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            category TEXT DEFAULT '',
+            item TEXT DEFAULT '',
+            vendor TEXT DEFAULT '',
+            version TEXT DEFAULT '',
+            qty INTEGER DEFAULT 0,
+            support_status TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS application_landscape (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            app_name TEXT DEFAULT '',
+            criticality TEXT DEFAULT 'Standard',
+            hosting TEXT DEFAULT '',
+            owner TEXT DEFAULT '',
+            opportunities TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS service_landscape (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            service TEXT DEFAULT '',
+            incumbent TEXT DEFAULT '',
+            contract_end TEXT DEFAULT '',
+            annual_value REAL DEFAULT 0,
+            notes TEXT DEFAULT '',
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS account_text_sections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            section TEXT NOT NULL,
+            content TEXT DEFAULT '',
+            updated_at TEXT,
+            UNIQUE(customer_id, section),
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
     """)
     conn.commit()
 
@@ -349,3 +487,407 @@ def get_customers_by_company(conn, limit=10):
         GROUP BY company ORDER BY count DESC LIMIT ?
     """, (limit,)).fetchall()
     return [dict(r) for r in rows]
+
+
+# --- Account Resources ---
+
+def get_account_resources(conn, customer_id):
+    rows = conn.execute(
+        "SELECT * FROM account_resources WHERE customer_id=? ORDER BY role",
+        (customer_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def upsert_account_resource(conn, customer_id, role, name="", email="", phone="", resource_id=None):
+    if resource_id:
+        conn.execute(
+            "UPDATE account_resources SET role=?, name=?, email=?, phone=? WHERE id=?",
+            (role, name, email, phone, resource_id))
+    else:
+        conn.execute(
+            "INSERT INTO account_resources (customer_id, role, name, email, phone) VALUES (?,?,?,?,?)",
+            (customer_id, role, name, email, phone))
+    conn.commit()
+
+
+def delete_account_resource(conn, resource_id):
+    conn.execute("DELETE FROM account_resources WHERE id=?", (resource_id,))
+    conn.commit()
+
+
+# --- Meeting Notes ---
+
+def get_meeting_notes(conn, customer_id):
+    rows = conn.execute(
+        "SELECT * FROM meeting_notes WHERE customer_id=? ORDER BY meeting_date DESC",
+        (customer_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_meeting_note(conn, customer_id, meeting_date, audience="", notes=""):
+    now = _now()
+    cur = conn.execute(
+        "INSERT INTO meeting_notes (customer_id, meeting_date, audience, notes, created_at) VALUES (?,?,?,?,?)",
+        (customer_id, meeting_date, audience, notes, now))
+    conn.commit()
+    return cur.lastrowid
+
+
+def update_meeting_note(conn, note_id, meeting_date, audience="", notes=""):
+    conn.execute(
+        "UPDATE meeting_notes SET meeting_date=?, audience=?, notes=? WHERE id=?",
+        (meeting_date, audience, notes, note_id))
+    conn.commit()
+
+
+def delete_meeting_note(conn, note_id):
+    conn.execute("DELETE FROM meeting_notes WHERE id=?", (note_id,))
+    conn.commit()
+
+
+# --- Business Initiatives ---
+
+def get_business_initiatives(conn, customer_id, section=None):
+    if section:
+        rows = conn.execute(
+            "SELECT * FROM business_initiatives WHERE customer_id=? AND section=? ORDER BY sort_order",
+            (customer_id, section)).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM business_initiatives WHERE customer_id=? ORDER BY section, sort_order",
+            (customer_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_business_initiative(conn, customer_id, section, content="", sort_order=0):
+    cur = conn.execute(
+        "INSERT INTO business_initiatives (customer_id, section, content, sort_order) VALUES (?,?,?,?)",
+        (customer_id, section, content, sort_order))
+    conn.commit()
+    return cur.lastrowid
+
+
+def update_business_initiative(conn, item_id, content="", sort_order=0):
+    conn.execute(
+        "UPDATE business_initiatives SET content=?, sort_order=? WHERE id=?",
+        (content, sort_order, item_id))
+    conn.commit()
+
+
+def delete_business_initiative(conn, item_id):
+    conn.execute("DELETE FROM business_initiatives WHERE id=?", (item_id,))
+    conn.commit()
+
+
+# --- Contact Development ---
+
+def get_contacts(conn, customer_id):
+    rows = conn.execute(
+        "SELECT * FROM contact_development WHERE customer_id=? ORDER BY name",
+        (customer_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_contact(conn, customer_id, name, title="", relationship="Unknown",
+                influence="Influencer", phone="", email="", notes=""):
+    cur = conn.execute(
+        "INSERT INTO contact_development (customer_id, name, title, relationship, influence, phone, email, notes) VALUES (?,?,?,?,?,?,?,?)",
+        (customer_id, name, title, relationship, influence, phone, email, notes))
+    conn.commit()
+    return cur.lastrowid
+
+
+def update_contact(conn, contact_id, name, title="", relationship="Unknown",
+                   influence="Influencer", phone="", email="", notes=""):
+    conn.execute(
+        "UPDATE contact_development SET name=?, title=?, relationship=?, influence=?, phone=?, email=?, notes=? WHERE id=?",
+        (name, title, relationship, influence, phone, email, notes, contact_id))
+    conn.commit()
+
+
+def delete_contact(conn, contact_id):
+    conn.execute("DELETE FROM contact_development WHERE id=?", (contact_id,))
+    conn.commit()
+
+
+# --- Account Goals ---
+
+def get_goals_meta(conn, customer_id):
+    row = conn.execute(
+        "SELECT * FROM account_goals_meta WHERE customer_id=?",
+        (customer_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def upsert_goals_meta(conn, customer_id, moonshot="", objectives=""):
+    existing = get_goals_meta(conn, customer_id)
+    if existing:
+        conn.execute(
+            "UPDATE account_goals_meta SET moonshot=?, objectives=? WHERE customer_id=?",
+            (moonshot, objectives, customer_id))
+    else:
+        conn.execute(
+            "INSERT INTO account_goals_meta (customer_id, moonshot, objectives) VALUES (?,?,?)",
+            (customer_id, moonshot, objectives))
+    conn.commit()
+
+
+def get_account_goals(conn, customer_id, term=None):
+    if term:
+        rows = conn.execute(
+            "SELECT * FROM account_goals WHERE customer_id=? AND term=? ORDER BY id",
+            (customer_id, term)).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM account_goals WHERE customer_id=? ORDER BY term, id",
+            (customer_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_account_goal(conn, customer_id, term="short", goal="", status="Not Started", notes=""):
+    cur = conn.execute(
+        "INSERT INTO account_goals (customer_id, term, goal, status, notes) VALUES (?,?,?,?,?)",
+        (customer_id, term, goal, status, notes))
+    conn.commit()
+    return cur.lastrowid
+
+
+def update_account_goal(conn, goal_id, goal="", status="Not Started", notes=""):
+    conn.execute(
+        "UPDATE account_goals SET goal=?, status=?, notes=? WHERE id=?",
+        (goal, status, notes, goal_id))
+    conn.commit()
+
+
+def delete_account_goal(conn, goal_id):
+    conn.execute("DELETE FROM account_goals WHERE id=?", (goal_id,))
+    conn.commit()
+
+
+# --- Action Items ---
+
+def get_action_items(conn, customer_id):
+    rows = conn.execute(
+        "SELECT * FROM action_items WHERE customer_id=? ORDER BY due_date",
+        (customer_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_action_item(conn, customer_id, what="", who="", how="", due_date="", status="On Track", notes=""):
+    now = _now()
+    cur = conn.execute(
+        "INSERT INTO action_items (customer_id, what, who, how, due_date, status, notes, created_at) VALUES (?,?,?,?,?,?,?,?)",
+        (customer_id, what, who, how, due_date, status, notes, now))
+    conn.commit()
+    return cur.lastrowid
+
+
+def update_action_item(conn, item_id, what="", who="", how="", due_date="", status="On Track", notes=""):
+    conn.execute(
+        "UPDATE action_items SET what=?, who=?, how=?, due_date=?, status=?, notes=? WHERE id=?",
+        (what, who, how, due_date, status, notes, item_id))
+    conn.commit()
+
+
+def delete_action_item(conn, item_id):
+    conn.execute("DELETE FROM action_items WHERE id=?", (item_id,))
+    conn.commit()
+
+
+# --- CPH Report ---
+
+def get_cph_report(conn, customer_id):
+    rows = conn.execute(
+        "SELECT * FROM cph_report WHERE customer_id=? ORDER BY category",
+        (customer_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_cph_row(conn, customer_id, category, **months):
+    vals = {f"month_{i}": months.get(f"month_{i}", 0) for i in range(1, 13)}
+    conn.execute(
+        "INSERT INTO cph_report (customer_id, category, month_1,month_2,month_3,month_4,month_5,month_6,month_7,month_8,month_9,month_10,month_11,month_12) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (customer_id, category, *[vals[f"month_{i}"] for i in range(1, 13)]))
+    conn.commit()
+
+
+def update_cph_row(conn, row_id, category, **months):
+    vals = {f"month_{i}": months.get(f"month_{i}", 0) for i in range(1, 13)}
+    conn.execute(
+        "UPDATE cph_report SET category=?, month_1=?,month_2=?,month_3=?,month_4=?,month_5=?,month_6=?,month_7=?,month_8=?,month_9=?,month_10=?,month_11=?,month_12=? WHERE id=?",
+        (category, *[vals[f"month_{i}"] for i in range(1, 13)], row_id))
+    conn.commit()
+
+
+def delete_cph_row(conn, row_id):
+    conn.execute("DELETE FROM cph_report WHERE id=?", (row_id,))
+    conn.commit()
+
+
+# --- HW/SW Landscape ---
+
+def get_hw_sw_landscape(conn, customer_id):
+    rows = conn.execute(
+        "SELECT * FROM hw_sw_landscape WHERE customer_id=? ORDER BY category, item",
+        (customer_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_hw_sw_item(conn, customer_id, category="", item="", vendor="", version="", qty=0, support_status="", notes=""):
+    cur = conn.execute(
+        "INSERT INTO hw_sw_landscape (customer_id, category, item, vendor, version, qty, support_status, notes) VALUES (?,?,?,?,?,?,?,?)",
+        (customer_id, category, item, vendor, version, qty, support_status, notes))
+    conn.commit()
+    return cur.lastrowid
+
+
+def update_hw_sw_item(conn, item_id, category="", item="", vendor="", version="", qty=0, support_status="", notes=""):
+    conn.execute(
+        "UPDATE hw_sw_landscape SET category=?, item=?, vendor=?, version=?, qty=?, support_status=?, notes=? WHERE id=?",
+        (category, item, vendor, version, qty, support_status, notes, item_id))
+    conn.commit()
+
+
+def delete_hw_sw_item(conn, item_id):
+    conn.execute("DELETE FROM hw_sw_landscape WHERE id=?", (item_id,))
+    conn.commit()
+
+
+def seed_hw_sw_landscape(conn, customer_id):
+    """Pre-seed ~50 common technology items for a new customer if none exist."""
+    existing = get_hw_sw_landscape(conn, customer_id)
+    if existing:
+        return
+    template = [
+        ("Servers", "Physical Servers", "", "", 0, "", ""),
+        ("Servers", "Virtual Servers", "", "", 0, "", ""),
+        ("Servers", "Blade Chassis", "", "", 0, "", ""),
+        ("Storage", "SAN", "", "", 0, "", ""),
+        ("Storage", "NAS", "", "", 0, "", ""),
+        ("Storage", "Backup Appliance", "", "", 0, "", ""),
+        ("Storage", "Object Storage", "", "", 0, "", ""),
+        ("Networking", "Core Switches", "", "", 0, "", ""),
+        ("Networking", "Access Switches", "", "", 0, "", ""),
+        ("Networking", "Routers", "", "", 0, "", ""),
+        ("Networking", "Firewalls", "", "", 0, "", ""),
+        ("Networking", "Load Balancers", "", "", 0, "", ""),
+        ("Networking", "Wireless Controllers", "", "", 0, "", ""),
+        ("Networking", "Wireless APs", "", "", 0, "", ""),
+        ("Networking", "SD-WAN", "", "", 0, "", ""),
+        ("Security", "Next-Gen Firewall", "", "", 0, "", ""),
+        ("Security", "IDS/IPS", "", "", 0, "", ""),
+        ("Security", "SIEM", "", "", 0, "", ""),
+        ("Security", "EDR/XDR", "", "", 0, "", ""),
+        ("Security", "NAC", "", "", 0, "", ""),
+        ("Security", "Email Security", "", "", 0, "", ""),
+        ("Security", "Web Proxy", "", "", 0, "", ""),
+        ("Security", "PAM", "", "", 0, "", ""),
+        ("Security", "MFA/IAM", "", "", 0, "", ""),
+        ("Compute", "Hypervisor Platform", "", "", 0, "", ""),
+        ("Compute", "Container Platform", "", "", 0, "", ""),
+        ("Compute", "VDI", "", "", 0, "", ""),
+        ("Compute", "HCI", "", "", 0, "", ""),
+        ("Cloud", "IaaS", "", "", 0, "", ""),
+        ("Cloud", "PaaS", "", "", 0, "", ""),
+        ("Cloud", "SaaS", "", "", 0, "", ""),
+        ("Cloud", "DRaaS", "", "", 0, "", ""),
+        ("Cloud", "BaaS", "", "", 0, "", ""),
+        ("Collaboration", "Email Platform", "", "", 0, "", ""),
+        ("Collaboration", "UC Platform", "", "", 0, "", ""),
+        ("Collaboration", "Video Conferencing", "", "", 0, "", ""),
+        ("Collaboration", "Contact Center", "", "", 0, "", ""),
+        ("Collaboration", "Team Messaging", "", "", 0, "", ""),
+        ("Database", "RDBMS", "", "", 0, "", ""),
+        ("Database", "NoSQL", "", "", 0, "", ""),
+        ("OS", "Windows Server", "", "", 0, "", ""),
+        ("OS", "Linux (RHEL/Ubuntu)", "", "", 0, "", ""),
+        ("Management", "Monitoring", "", "", 0, "", ""),
+        ("Management", "ITSM/Ticketing", "", "", 0, "", ""),
+        ("Management", "Config Management", "", "", 0, "", ""),
+        ("Management", "Patch Management", "", "", 0, "", ""),
+        ("Endpoint", "Desktops", "", "", 0, "", ""),
+        ("Endpoint", "Laptops", "", "", 0, "", ""),
+        ("Endpoint", "Mobile Devices", "", "", 0, "", ""),
+        ("Endpoint", "Printers/MFPs", "", "", 0, "", ""),
+    ]
+    for cat, itm, vendor, ver, qty, status, notes in template:
+        conn.execute(
+            "INSERT INTO hw_sw_landscape (customer_id, category, item, vendor, version, qty, support_status, notes) VALUES (?,?,?,?,?,?,?,?)",
+            (customer_id, cat, itm, vendor, ver, qty, status, notes))
+    conn.commit()
+
+
+# --- Application Landscape ---
+
+def get_application_landscape(conn, customer_id):
+    rows = conn.execute(
+        "SELECT * FROM application_landscape WHERE customer_id=? ORDER BY app_name",
+        (customer_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_application(conn, customer_id, app_name="", criticality="Standard", hosting="", owner="", opportunities="", notes=""):
+    cur = conn.execute(
+        "INSERT INTO application_landscape (customer_id, app_name, criticality, hosting, owner, opportunities, notes) VALUES (?,?,?,?,?,?,?)",
+        (customer_id, app_name, criticality, hosting, owner, opportunities, notes))
+    conn.commit()
+    return cur.lastrowid
+
+
+def update_application(conn, app_id, app_name="", criticality="Standard", hosting="", owner="", opportunities="", notes=""):
+    conn.execute(
+        "UPDATE application_landscape SET app_name=?, criticality=?, hosting=?, owner=?, opportunities=?, notes=? WHERE id=?",
+        (app_name, criticality, hosting, owner, opportunities, notes, app_id))
+    conn.commit()
+
+
+def delete_application(conn, app_id):
+    conn.execute("DELETE FROM application_landscape WHERE id=?", (app_id,))
+    conn.commit()
+
+
+# --- Service Landscape ---
+
+def get_service_landscape(conn, customer_id):
+    rows = conn.execute(
+        "SELECT * FROM service_landscape WHERE customer_id=? ORDER BY service",
+        (customer_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_service(conn, customer_id, service="", incumbent="", contract_end="", annual_value=0, notes=""):
+    cur = conn.execute(
+        "INSERT INTO service_landscape (customer_id, service, incumbent, contract_end, annual_value, notes) VALUES (?,?,?,?,?,?)",
+        (customer_id, service, incumbent, contract_end, annual_value, notes))
+    conn.commit()
+    return cur.lastrowid
+
+
+def update_service(conn, service_id, service="", incumbent="", contract_end="", annual_value=0, notes=""):
+    conn.execute(
+        "UPDATE service_landscape SET service=?, incumbent=?, contract_end=?, annual_value=?, notes=? WHERE id=?",
+        (service, incumbent, contract_end, annual_value, notes, service_id))
+    conn.commit()
+
+
+def delete_service(conn, service_id):
+    conn.execute("DELETE FROM service_landscape WHERE id=?", (service_id,))
+    conn.commit()
+
+
+# --- Account Text Sections (Tech Profile & Guidance) ---
+
+def get_text_section(conn, customer_id, section):
+    row = conn.execute(
+        "SELECT * FROM account_text_sections WHERE customer_id=? AND section=?",
+        (customer_id, section)).fetchone()
+    return dict(row) if row else None
+
+
+def save_text_section(conn, customer_id, section, content=""):
+    now = _now()
+    conn.execute(
+        "INSERT INTO account_text_sections (customer_id, section, content, updated_at) VALUES (?,?,?,?) "
+        "ON CONFLICT(customer_id, section) DO UPDATE SET content=?, updated_at=?",
+        (customer_id, section, content, now, content, now))
+    conn.commit()
