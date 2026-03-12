@@ -20,9 +20,21 @@ class FollowUpsTab(ctk.CTkFrame):
         # ── Page header ────────────────────────────────────────────────
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.pack(fill="x", padx=28, pady=(24, 4))
-        ctk.CTkLabel(header, text="Follow-ups",
+
+        header_left = ctk.CTkFrame(header, fg_color="transparent")
+        header_left.pack(side="left")
+        title_row = ctk.CTkFrame(header_left, fg_color="transparent")
+        title_row.pack(anchor="w")
+        ctk.CTkLabel(title_row, text="\u25F4",
+                     font=ctk.CTkFont(size=20),
+                     text_color="#2563EB").pack(side="left", padx=(0, 8))
+        ctk.CTkLabel(title_row, text="Follow-ups",
                      font=ctk.CTkFont(size=22, weight="bold"),
                      text_color="#1E293B").pack(side="left")
+        ctk.CTkLabel(header_left, text="Track and manage your follow-up tasks",
+                     font=ctk.CTkFont(size=11),
+                     text_color="#64748B").pack(anchor="w", pady=(2, 0))
+
         ctk.CTkButton(header, text="Export CSV", width=110, height=34,
                       corner_radius=8,
                       fg_color="#E2E8F0", hover_color="#CBD5E1",

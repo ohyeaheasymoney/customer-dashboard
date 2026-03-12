@@ -1,4 +1,4 @@
-"""Customer Detail page — 13-tab strategic account workbook."""
+"""Customer Detail page — 13-tab strategic account workbook with left nav."""
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -22,6 +22,35 @@ from tabs.workbook.service_landscape import ServiceLandscapeTab
 from tabs.workbook.tech_profile import TechProfileTab
 from tabs.workbook.teamed_guidance import TeamedGuidanceTab
 
+# Navigation structure: (section_label, [(key, display_name, TabClass), ...])
+NAV_SECTIONS = [
+    ("\u25A0  OVERVIEW", [
+        ("landing",    "\u25A3  Dashboard",       LandingPage),
+        ("resources",  "\u25CB  Team Resources",   ResourcesTab),
+    ]),
+    ("\u25C6  ENGAGEMENT", [
+        ("meetings",   "\u25B7  Meeting Notes",    MeetingNotesTab),
+        ("contacts",   "\u25C8  Contacts",         ContactDevelopmentTab),
+        ("actions",    "\u2713  Action Items",     ActionItemsTab),
+    ]),
+    ("\u25B2  STRATEGY", [
+        ("initiatives","\u25B8  Business Init.",   BusinessInitiativesTab),
+        ("goals",      "\u2605  Goals",            AccountGoalsTab),
+    ]),
+    ("\u25C9  TECHNOLOGY", [
+        ("hwsw",       "\u25A1  HW / SW",          HwSwLandscapeTab),
+        ("apps",       "\u25CE  Applications",     ApplicationLandscapeTab),
+        ("services",   "\u25C7  Services",         ServiceLandscapeTab),
+        ("techprofile","\u2699  Tech Profile",     TechProfileTab),
+    ]),
+    ("\u25B6  FINANCIAL", [
+        ("cph",        "\u25A8  CPH Report",       CphReportTab),
+    ]),
+    ("\u25CF  OTHER", [
+        ("guidance",   "\u25BA  Guidance",         TeamedGuidanceTab),
+    ]),
+]
+
 
 class CustomerDetailTab(ctk.CTkFrame):
     def __init__(self, parent, conn, customer_id, app):
@@ -30,95 +59,174 @@ class CustomerDetailTab(ctk.CTkFrame):
         self.customer_id = customer_id
         self.app = app
         self._subtabs = {}
+        self._nav_buttons = {}
+        self._active_key = None
         self._build_ui()
 
     def _build_ui(self):
-        # ── Header bar with name and action buttons ────────────────────
-        header_card = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12,
-                                   border_width=1, border_color="#E2E8F0")
-        header_card.pack(fill="x", padx=16, pady=(12, 0))
+        # ── Header bar ─────────────────────────────────────────────────
+        header = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=0,
+                              border_width=0)
+        header.pack(fill="x", side="top")
 
-        header_inner = ctk.CTkFrame(header_card, fg_color="transparent")
-        header_inner.pack(fill="x", padx=20, pady=14)
+        # Blue accent line at very top
+        ctk.CTkFrame(header, fg_color="#2563EB", height=3,
+                     corner_radius=0).pack(fill="x", side="top")
 
-        # Left side: customer name + subtitle
-        header_left = ctk.CTkFrame(header_inner, fg_color="transparent")
-        header_left.pack(side="left", fill="x", expand=True)
+        header_inner = ctk.CTkFrame(header, fg_color="transparent")
+        header_inner.pack(fill="x", padx=24, pady=(12, 12))
 
-        self.name_label = ctk.CTkLabel(header_left, text="",
-                                        font=ctk.CTkFont(size=20, weight="bold"),
-                                        text_color="#1E293B")
+        # Left: avatar circle + name + subtitle
+        left = ctk.CTkFrame(header_inner, fg_color="transparent")
+        left.pack(side="left", fill="x", expand=True)
+
+        left_row = ctk.CTkFrame(left, fg_color="transparent")
+        left_row.pack(anchor="w")
+
+        self.avatar_canvas = tk.Canvas(left_row, width=44, height=44,
+                                        bg="#FFFFFF", highlightthickness=0)
+        self.avatar_canvas.create_oval(2, 2, 42, 42, fill="#DBEAFE",
+                                        outline="#93C5FD", width=2)
+        self.avatar_canvas.create_text(22, 22, text="?", fill="#1E3A8A",
+                                        font=("Helvetica", 16, "bold"))
+        self.avatar_canvas.pack(side="left", padx=(0, 12))
+
+        name_block = ctk.CTkFrame(left_row, fg_color="transparent")
+        name_block.pack(side="left")
+
+        self.name_label = ctk.CTkLabel(
+            name_block, text="", font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="#1E293B")
         self.name_label.pack(anchor="w")
-        self.subtitle_label = ctk.CTkLabel(header_left, text="",
-                                            font=ctk.CTkFont(size=12),
-                                            text_color="#64748B")
+
+        self.subtitle_label = ctk.CTkLabel(
+            name_block, text="", font=ctk.CTkFont(size=11),
+            text_color="#64748B")
         self.subtitle_label.pack(anchor="w", pady=(2, 0))
 
-        # Right side: action buttons
-        header_right = ctk.CTkFrame(header_inner, fg_color="transparent")
-        header_right.pack(side="right")
-        ctk.CTkButton(header_right, text="Edit", width=70, height=32,
-                      corner_radius=8,
-                      fg_color="#E2E8F0", hover_color="#CBD5E1",
-                      text_color="#1E293B",
-                      border_width=1, border_color="#CBD5E1",
-                      command=self._edit_customer).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(header_right, text="Send Email", width=100, height=32,
-                      corner_radius=8,
-                      fg_color="#2563EB", hover_color="#1D4ED8",
-                      command=self._send_email).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(header_right, text="Close", width=70, height=32,
-                      corner_radius=8,
-                      fg_color="#DC2626", hover_color="#B91C1C",
-                      command=self._close_tab).pack(side="left")
+        # Right: action buttons
+        right = ctk.CTkFrame(header_inner, fg_color="transparent")
+        right.pack(side="right")
 
-        # ── Tabview with 13 sub-tabs ──────────────────────────────────
-        self.tabview = ctk.CTkTabview(self, fg_color="#F0F4F8",
-                                      segmented_button_fg_color="#E2E8F0",
-                                      segmented_button_selected_color="#2563EB",
-                                      segmented_button_selected_hover_color="#1D4ED8",
-                                      segmented_button_unselected_color="#E2E8F0",
-                                      segmented_button_unselected_hover_color="#CBD5E1",
-                                      corner_radius=8)
-        self.tabview.pack(fill="both", expand=True, padx=8, pady=(8, 8))
+        ctk.CTkButton(
+            right, text="Edit", width=80, height=34, corner_radius=8,
+            fg_color="#F1F5F9", hover_color="#E2E8F0", text_color="#1E293B",
+            font=ctk.CTkFont(size=12),
+            border_width=1, border_color="#CBD5E1",
+            command=self._edit_customer).pack(side="left", padx=(0, 8))
 
-        # Define tabs in order
-        tab_defs = [
-            ("Landing", LandingPage),
-            ("Resources", ResourcesTab),
-            ("Meeting Notes", MeetingNotesTab),
-            ("Business Init.", BusinessInitiativesTab),
-            ("Contacts", ContactDevelopmentTab),
-            ("Goals", AccountGoalsTab),
-            ("Action Items", ActionItemsTab),
-            ("CPH Report", CphReportTab),
-            ("HW/SW", HwSwLandscapeTab),
-            ("Applications", ApplicationLandscapeTab),
-            ("Services", ServiceLandscapeTab),
-            ("Tech Profile", TechProfileTab),
-            ("Guidance", TeamedGuidanceTab),
-        ]
+        ctk.CTkButton(
+            right, text="Send Email", width=110, height=34, corner_radius=8,
+            fg_color="#2563EB", hover_color="#1D4ED8",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            command=self._send_email).pack(side="left", padx=(0, 8))
 
-        for tab_name, TabClass in tab_defs:
-            tab_frame = self.tabview.add(tab_name)
-            subtab = TabClass(tab_frame, self.conn, self.customer_id, self.app)
-            subtab.pack(fill="both", expand=True)
-            self._subtabs[tab_name] = subtab
+        ctk.CTkButton(
+            right, text="Close", width=80, height=34, corner_radius=8,
+            fg_color="#FEE2E2", hover_color="#FECACA", text_color="#991B1B",
+            font=ctk.CTkFont(size=12),
+            command=self._close_tab).pack(side="left")
 
-        self.tabview.set("Landing")
+        # Bottom border on header
+        ctk.CTkFrame(header, fg_color="#E2E8F0", height=1,
+                     corner_radius=0).pack(fill="x", side="bottom")
+
+        # ── Body: left nav + content ───────────────────────────────────
+        body = ctk.CTkFrame(self, fg_color="transparent")
+        body.pack(fill="both", expand=True)
+
+        # Left nav panel
+        nav_panel = ctk.CTkFrame(body, fg_color="#FFFFFF", width=185,
+                                 corner_radius=0)
+        nav_panel.pack(side="left", fill="y")
+        nav_panel.pack_propagate(False)
+
+        # Right border on nav
+        ctk.CTkFrame(nav_panel, fg_color="#E2E8F0", width=1,
+                     corner_radius=0).pack(side="right", fill="y")
+
+        nav_scroll = ctk.CTkScrollableFrame(nav_panel, fg_color="#FFFFFF",
+                                            scrollbar_button_color="#CBD5E1",
+                                            scrollbar_button_hover_color="#94A3B8")
+        nav_scroll.pack(fill="both", expand=True, padx=0, pady=0)
+
+        # Build nav sections
+        for section_label, items in NAV_SECTIONS:
+            ctk.CTkLabel(
+                nav_scroll, text=section_label,
+                font=ctk.CTkFont(size=9, weight="bold"),
+                text_color="#94A3B8",
+            ).pack(anchor="w", padx=16, pady=(14, 4))
+
+            for key, display_name, TabClass in items:
+                btn = ctk.CTkButton(
+                    nav_scroll, text=display_name,
+                    fg_color="transparent",
+                    hover_color="#EFF6FF",
+                    text_color="#475569",
+                    anchor="w", height=34,
+                    font=ctk.CTkFont(size=12),
+                    corner_radius=6,
+                    command=lambda k=key: self._show_subtab(k),
+                )
+                btn.pack(fill="x", padx=8, pady=1)
+                self._nav_buttons[key] = btn
+
+        # Content area
+        self._content = ctk.CTkFrame(body, fg_color="#F0F4F8",
+                                     corner_radius=0)
+        self._content.pack(side="left", fill="both", expand=True)
+
+        # Create all sub-tabs (stacked, hidden)
+        for _section_label, items in NAV_SECTIONS:
+            for key, _display_name, TabClass in items:
+                subtab = TabClass(self._content, self.conn,
+                                  self.customer_id, self.app)
+                subtab.place(relx=0, rely=0, relwidth=1, relheight=1)
+                subtab.lower()
+                self._subtabs[key] = subtab
+
+        # Show first tab
+        self._show_subtab("landing")
+
+    def _show_subtab(self, key):
+        if key == self._active_key:
+            return
+
+        # Deactivate old
+        if self._active_key and self._active_key in self._nav_buttons:
+            self._nav_buttons[self._active_key].configure(
+                fg_color="transparent", text_color="#475569",
+                font=ctk.CTkFont(size=12))
+        if self._active_key and self._active_key in self._subtabs:
+            self._subtabs[self._active_key].lower()
+
+        # Activate new
+        self._active_key = key
+        self._nav_buttons[key].configure(
+            fg_color="#EFF6FF", text_color="#1D4ED8",
+            font=ctk.CTkFont(size=12, weight="bold"))
+        self._subtabs[key].lift()
 
     def refresh(self):
-        # Update header
         customer = db.get_customer(self.conn, self.customer_id)
         if not customer:
             return
 
         self.name_label.configure(text=customer["name"])
-        self.subtitle_label.configure(
-            text=f"{customer['company']}  |  {customer['category']}"
-            if customer["company"] else customer["category"])
+        subtitle = (f"{customer['company']}  \u2022  {customer['category']}"
+                    if customer["company"] else customer["category"])
+        self.subtitle_label.configure(text=subtitle)
 
-        # Refresh all sub-tabs
+        # Update avatar initials
+        parts = customer["name"].split()
+        initials = (parts[0][0] + (parts[-1][0] if len(parts) > 1 else "")).upper()
+        self.avatar_canvas.delete("all")
+        self.avatar_canvas.create_oval(2, 2, 42, 42, fill="#DBEAFE",
+                                        outline="#93C5FD", width=2)
+        self.avatar_canvas.create_text(22, 22, text=initials, fill="#1E3A8A",
+                                        font=("Helvetica", 14, "bold"))
+
         for subtab in self._subtabs.values():
             subtab.refresh()
 

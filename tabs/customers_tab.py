@@ -22,9 +22,17 @@ class CustomersTab(ctk.CTkFrame):
 
         header_left = ctk.CTkFrame(header, fg_color="transparent")
         header_left.pack(side="left")
-        ctk.CTkLabel(header_left, text="Customers",
+        title_row = ctk.CTkFrame(header_left, fg_color="transparent")
+        title_row.pack(anchor="w")
+        ctk.CTkLabel(title_row, text="\u25A1",
+                     font=ctk.CTkFont(size=20),
+                     text_color="#2563EB").pack(side="left", padx=(0, 8))
+        ctk.CTkLabel(title_row, text="Customers",
                      font=ctk.CTkFont(size=22, weight="bold"),
-                     text_color="#1E293B").pack(anchor="w")
+                     text_color="#1E293B").pack(side="left")
+        ctk.CTkLabel(header_left, text="Manage your customer accounts",
+                     font=ctk.CTkFont(size=11),
+                     text_color="#64748B").pack(anchor="w", pady=(2, 0))
 
         # Action buttons in header
         btn_group = ctk.CTkFrame(header, fg_color="transparent")

@@ -11,17 +11,20 @@ COLORS = {
     "bg": "#F0F4F8",
     "card": "#FFFFFF",
     "card_alt": "#F1F5F9",
-    "border": "#CBD5E1",
+    "border": "#E2E8F0",
+    "border_strong": "#CBD5E1",
     "text": "#1E293B",
     "text_dim": "#64748B",
+    "text_muted": "#94A3B8",
     "primary": "#2563EB",
     "primary_hover": "#1D4ED8",
+    "primary_light": "#EFF6FF",
     "success": "#059669",
     "warning": "#D97706",
     "danger": "#DC2626",
     "danger_hover": "#B91C1C",
-    "btn_secondary": "#E2E8F0",
-    "btn_secondary_hover": "#CBD5E1",
+    "btn_secondary": "#F1F5F9",
+    "btn_secondary_hover": "#E2E8F0",
     "input_bg": "#F8FAFC",
 }
 
@@ -30,7 +33,9 @@ class BaseSubTab(ctk.CTkScrollableFrame):
     """Base class for workbook sub-tabs providing common helpers."""
 
     def __init__(self, parent, conn, customer_id, app):
-        super().__init__(parent, fg_color=COLORS["bg"])
+        super().__init__(parent, fg_color=COLORS["bg"],
+                         scrollbar_button_color="#CBD5E1",
+                         scrollbar_button_hover_color="#94A3B8")
         self.conn = conn
         self.customer_id = customer_id
         self.app = app
@@ -42,37 +47,50 @@ class BaseSubTab(ctk.CTkScrollableFrame):
     # ── UI Helpers ──────────────────────────────────────────────────
 
     def make_card(self, parent=None, pad_top=12):
-        """Create a styled card frame."""
+        """Create a styled card frame with subtle border."""
         p = parent or self
-        card = ctk.CTkFrame(p, fg_color=COLORS["card"], corner_radius=12)
-        card.pack(fill="x", padx=20, pady=(pad_top, 0))
+        card = ctk.CTkFrame(p, fg_color=COLORS["card"], corner_radius=10,
+                            border_width=1, border_color=COLORS["border"])
+        card.pack(fill="x", padx=16, pady=(pad_top, 0))
         return card
 
     def make_card_header(self, card, title, buttons=None):
         """Add a header row with title and optional buttons to a card."""
         header = ctk.CTkFrame(card, fg_color="transparent")
-        header.pack(fill="x", padx=18, pady=(14, 8))
-        ctk.CTkLabel(header, text=title,
-                     font=ctk.CTkFont(size=14, weight="bold"),
+        header.pack(fill="x", padx=20, pady=(16, 10))
+
+        # Title with subtle accent dot
+        title_frame = ctk.CTkFrame(header, fg_color="transparent")
+        title_frame.pack(side="left")
+        ctk.CTkLabel(title_frame, text="\u25CF",
+                     font=ctk.CTkFont(size=8),
+                     text_color=COLORS["primary"]).pack(side="left",
+                                                         padx=(0, 8))
+        ctk.CTkLabel(title_frame, text=title,
+                     font=ctk.CTkFont(size=15, weight="bold"),
                      text_color=COLORS["text"]).pack(side="left")
+
         if buttons:
             for text, cmd, kwargs in buttons:
                 kw = {
-                    "width": 120, "height": 30, "corner_radius": 6,
-                    "font": ctk.CTkFont(size=11),
+                    "width": 120, "height": 32, "corner_radius": 8,
+                    "font": ctk.CTkFont(size=12),
+                    "fg_color": COLORS["primary"],
+                    "hover_color": COLORS["primary_hover"],
                 }
                 kw.update(kwargs)
                 ctk.CTkButton(header, text=text, command=cmd, **kw).pack(
-                    side="right", padx=(6, 0))
+                    side="right", padx=(8, 0))
+
         # Separator
         ctk.CTkFrame(card, fg_color=COLORS["border"], height=1).pack(
-            fill="x", padx=18)
+            fill="x", padx=20)
         return header
 
     def make_treeview(self, card, columns, col_widths, height=10):
         """Create a styled treeview inside a card with scrollbar."""
         frame = tk.Frame(card, bg="#FFFFFF")
-        frame.pack(fill="both", expand=True, padx=18, pady=(8, 16))
+        frame.pack(fill="both", expand=True, padx=20, pady=(10, 18))
 
         tree = ttk.Treeview(frame, columns=columns, show="headings",
                             height=height)
@@ -84,7 +102,7 @@ class BaseSubTab(ctk.CTkScrollableFrame):
         tree.tag_configure("evenrow",
                            background="#FFFFFF", foreground="#1E293B")
         tree.tag_configure("oddrow",
-                           background="#F1F5F9", foreground="#1E293B")
+                           background="#F8FAFC", foreground="#1E293B")
 
         scroll = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
         tree.configure(yscrollcommand=scroll.set)
@@ -94,14 +112,12 @@ class BaseSubTab(ctk.CTkScrollableFrame):
         return tree, frame
 
     def make_context_menu(self, tree, items):
-        """Create a right-click context menu for a treeview.
-
-        items: list of (label, callback) or None for separator
-        """
+        """Create a right-click context menu for a treeview."""
         menu = tk.Menu(self, tearoff=0,
-                       bg=COLORS["bg"], fg=COLORS["text"],
+                       bg="#FFFFFF", fg=COLORS["text"],
                        activebackground=COLORS["primary"],
-                       activeforeground="#FFFFFF")
+                       activeforeground="#FFFFFF",
+                       font=("Helvetica", 10))
         for item in items:
             if item is None:
                 menu.add_separator()

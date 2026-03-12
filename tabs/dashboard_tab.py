@@ -16,30 +16,62 @@ class DashboardTab(ctk.CTkFrame):
         self._build_ui()
 
     def _build_ui(self):
-        # ── Page header ────────────────────────────────────────────────
-        header = ctk.CTkFrame(self, fg_color="transparent")
-        header.pack(fill="x", padx=28, pady=(24, 4))
-        ctk.CTkLabel(header, text="Dashboard",
-                     font=ctk.CTkFont(size=22, weight="bold"),
-                     text_color="#1E293B").pack(anchor="w")
-        ctk.CTkLabel(header, text="Overview of your customer pipeline",
+        # ── Welcome banner ────────────────────────────────────────────
+        banner = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12,
+                              border_width=1, border_color="#E2E8F0")
+        banner.pack(fill="x", padx=28, pady=(24, 0))
+
+        banner_inner = ctk.CTkFrame(banner, fg_color="transparent")
+        banner_inner.pack(fill="x", padx=20, pady=18)
+
+        # Greeting with time-of-day
+        hour = datetime.now().hour
+        if hour < 12:
+            greeting = "Good Morning"
+            icon = "\u2600"   # sun
+        elif hour < 17:
+            greeting = "Good Afternoon"
+            icon = "\u263C"   # sun with rays
+        else:
+            greeting = "Good Evening"
+            icon = "\u263E"   # moon
+
+        greeting_row = ctk.CTkFrame(banner_inner, fg_color="transparent")
+        greeting_row.pack(anchor="w")
+
+        ctk.CTkLabel(greeting_row, text=f"{icon}  {greeting}, Ajay!",
+                     font=ctk.CTkFont(size=20, weight="bold"),
+                     text_color="#1E293B").pack(side="left")
+
+        ctk.CTkLabel(banner_inner,
+                     text="Here\u2019s your customer pipeline at a glance.",
                      font=ctk.CTkFont(size=12),
-                     text_color="#64748B").pack(anchor="w", pady=(2, 0))
+                     text_color="#64748B").pack(anchor="w", pady=(4, 0))
+
+        # Date badge on right
+        date_badge = ctk.CTkFrame(banner_inner, fg_color="#EFF6FF",
+                                   corner_radius=8)
+        date_badge.place(relx=1.0, rely=0.5, anchor="e")
+        today_str = datetime.now().strftime("%A, %b %d, %Y")
+        ctk.CTkLabel(date_badge, text=f"  \u25A3  {today_str}  ",
+                     font=ctk.CTkFont(size=11),
+                     text_color="#2563EB").pack(padx=8, pady=6)
 
         # ── Stat cards row ─────────────────────────────────────────────
         self.stats_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.stats_frame.pack(fill="x", padx=26, pady=(18, 8))
+        self.stats_frame.pack(fill="x", padx=26, pady=(14, 8))
 
         self.card_vars = {}
         cards = [
-            ("Total Customers", "total_customers", "#2563EB"),
-            ("Pending",         "pending_follow_ups", "#D97706"),
-            ("Overdue",         "overdue_follow_ups", "#DC2626"),
-            ("Completed",       "completed_follow_ups", "#059669"),
+            ("Total Customers", "total_customers", "#2563EB", "#DBEAFE", "\u25A1"),
+            ("Pending",         "pending_follow_ups", "#D97706", "#FEF3C7", "\u25F4"),
+            ("Overdue",         "overdue_follow_ups", "#DC2626", "#FEE2E2", "\u25B2"),
+            ("Completed",       "completed_follow_ups", "#059669", "#D1FAE5", "\u2713"),
         ]
-        for i, (label, key, accent) in enumerate(cards):
+        for i, (label, key, accent, accent_light, icon) in enumerate(cards):
             self.stats_frame.columnconfigure(i, weight=1, uniform="card")
-            card, var = self._make_stat_card(self.stats_frame, label, accent)
+            card, var = self._make_stat_card(self.stats_frame, label, accent,
+                                             accent_light, icon)
             card.grid(row=0, column=i, padx=6, pady=4, sticky="nsew")
             self.card_vars[key] = var
 
@@ -49,8 +81,9 @@ class DashboardTab(ctk.CTkFrame):
 
         self.canvas_widget = None
 
-    def _make_stat_card(self, parent, label_text, accent_color):
-        """Create a card with a colored left accent bar."""
+    def _make_stat_card(self, parent, label_text, accent_color,
+                        accent_light="#EFF6FF", icon="\u25CF"):
+        """Create a card with a colored accent bar and icon."""
         card = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=12,
                             border_width=1, border_color="#E2E8F0")
 
@@ -66,24 +99,23 @@ class DashboardTab(ctk.CTkFrame):
         content = ctk.CTkFrame(inner, fg_color="transparent")
         content.pack(fill="both", expand=True, padx=16, pady=14)
 
+        # Top row: icon badge
+        icon_badge = ctk.CTkFrame(content, fg_color=accent_light,
+                                   corner_radius=6, width=32, height=32)
+        icon_badge.pack(anchor="w", pady=(0, 8))
+        icon_badge.pack_propagate(False)
+        ctk.CTkLabel(icon_badge, text=icon,
+                     font=ctk.CTkFont(size=14),
+                     text_color=accent_color).place(relx=0.5, rely=0.5,
+                                                     anchor="center")
+
         value_var = tk.StringVar(value="0")
         ctk.CTkLabel(content, textvariable=value_var,
                      font=ctk.CTkFont(size=28, weight="bold"),
                      text_color="#1E293B").pack(anchor="w")
         ctk.CTkLabel(content, text=label_text,
                      font=ctk.CTkFont(size=11),
-                     text_color="#64748B").pack(anchor="w", pady=(4, 0))
-
-        # Small colored dot indicator
-        dot_frame = ctk.CTkFrame(content, fg_color="transparent")
-        dot_frame.pack(anchor="w", pady=(8, 0))
-        dot = tk.Canvas(dot_frame, width=8, height=8, bg="#FFFFFF",
-                        highlightthickness=0)
-        dot.create_oval(1, 1, 7, 7, fill=accent_color, outline=accent_color)
-        dot.pack(side="left")
-        ctk.CTkLabel(dot_frame, text=label_text.split()[0],
-                     font=ctk.CTkFont(size=10),
-                     text_color="#94A3B8").pack(side="left", padx=(4, 0))
+                     text_color="#64748B").pack(anchor="w", pady=(2, 0))
 
         return card, value_var
 

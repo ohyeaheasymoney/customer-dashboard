@@ -105,13 +105,13 @@ class App(ctk.CTkFrame):
 
         # ── Create core pages ─────────────────────────────────────────
         self.dashboard_tab = DashboardTab(self.content_frame, self.conn)
-        self._register_page("dashboard", self.dashboard_tab, "\u25C9  Dashboard")
+        self._register_page("dashboard", self.dashboard_tab, "\u25A3  Dashboard")
 
         self.customers_tab = CustomersTab(self.content_frame, self.conn, self)
-        self._register_page("customers", self.customers_tab, "\u25C8  Customers")
+        self._register_page("customers", self.customers_tab, "\u25A1  Customers")
 
         self.follow_ups_tab = FollowUpsTab(self.content_frame, self.conn, self)
-        self._register_page("follow_ups", self.follow_ups_tab, "\u25CE  Follow-ups")
+        self._register_page("follow_ups", self.follow_ups_tab, "\u25F4  Follow-ups")
 
         # Separator before detail tabs section
         self.detail_separator = None
@@ -134,21 +134,35 @@ class App(ctk.CTkFrame):
         title_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         title_frame.pack(fill="x", padx=16, pady=(20, 4))
 
-        ctk.CTkLabel(title_frame, text="Ajay's CRM",
-                     font=ctk.CTkFont(size=18, weight="bold"),
+        # Logo row: icon circle + text
+        logo_row = ctk.CTkFrame(title_frame, fg_color="transparent")
+        logo_row.pack(anchor="w")
+
+        logo_circle = tk.Canvas(logo_row, width=38, height=38,
+                                bg="#1E3A8A", highlightthickness=0)
+        logo_circle.create_oval(2, 2, 36, 36, fill="#2563EB", outline="#3B82F6",
+                                width=2)
+        logo_circle.create_text(19, 19, text="AC", fill="#FFFFFF",
+                                font=("Helvetica", 13, "bold"))
+        logo_circle.pack(side="left", padx=(0, 10))
+
+        logo_text = ctk.CTkFrame(logo_row, fg_color="transparent")
+        logo_text.pack(side="left")
+        ctk.CTkLabel(logo_text, text="Ajay's CRM",
+                     font=ctk.CTkFont(size=17, weight="bold"),
                      text_color="#FFFFFF").pack(anchor="w")
-        ctk.CTkLabel(title_frame, text="Customer Dashboard",
-                     font=ctk.CTkFont(size=11),
-                     text_color="#93C5FD").pack(anchor="w", pady=(2, 0))
+        ctk.CTkLabel(logo_text, text="Customer Dashboard",
+                     font=ctk.CTkFont(size=10),
+                     text_color="#93C5FD").pack(anchor="w", pady=(1, 0))
 
         # Separator line
-        sep = ctk.CTkFrame(self.sidebar, fg_color="#2563EB", height=1)
+        sep = ctk.CTkFrame(self.sidebar, fg_color="#3B82F6", height=1)
         sep.pack(fill="x", padx=16, pady=(16, 12))
 
         # Section label
-        ctk.CTkLabel(self.sidebar, text="  MAIN MENU",
-                     font=ctk.CTkFont(size=10, weight="bold"),
-                     text_color="#93C5FD").pack(fill="x", padx=16, pady=(0, 6), anchor="w")
+        ctk.CTkLabel(self.sidebar, text="  NAVIGATION",
+                     font=ctk.CTkFont(size=9, weight="bold"),
+                     text_color="#60A5FA").pack(fill="x", padx=16, pady=(0, 6), anchor="w")
 
         # Navigation buttons container
         self.nav_container = ctk.CTkFrame(self.sidebar, fg_color="transparent")
@@ -161,9 +175,15 @@ class App(ctk.CTkFrame):
         # Bottom section - version info
         bottom = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         bottom.pack(side="bottom", fill="x", padx=16, pady=(0, 16))
-        ctk.CTkLabel(bottom, text="v2.0  |  CustomTkinter",
+
+        ctk.CTkFrame(bottom, fg_color="#3B82F6", height=1).pack(
+            fill="x", pady=(0, 10))
+        ctk.CTkLabel(bottom, text="\u2726  Ajay's CRM  v2.0",
                      font=ctk.CTkFont(size=10),
-                     text_color="#93C5FD").pack(anchor="w")
+                     text_color="#60A5FA").pack(anchor="w")
+        ctk.CTkLabel(bottom, text="Built with CustomTkinter",
+                     font=ctk.CTkFont(size=9),
+                     text_color="#3B82F6").pack(anchor="w", pady=(2, 0))
 
     def _build_content(self):
         """Build the content area."""
@@ -296,7 +316,7 @@ class App(ctk.CTkFrame):
             self._show_detail_section()
 
         detail = CustomerDetailTab(self.content_frame, self.conn, customer_id, self)
-        self._register_page(page_name, detail, "\u2192  " + customer["name"], is_detail=True)
+        self._register_page(page_name, detail, "\u25B8  " + customer["name"], is_detail=True)
         self.detail_tabs[customer_id] = page_name
         self.show_page(page_name)
         detail.refresh()
@@ -306,14 +326,14 @@ class App(ctk.CTkFrame):
         if self.detail_separator:
             return
         self.detail_separator = ctk.CTkFrame(
-            self.detail_nav_container, fg_color="#2563EB", height=1
+            self.detail_nav_container, fg_color="#3B82F6", height=1
         )
         self.detail_separator.pack(fill="x", padx=16, pady=(12, 4))
 
         self.detail_section_label = ctk.CTkLabel(
-            self.detail_nav_container, text="  OPEN CUSTOMERS",
-            font=ctk.CTkFont(size=10, weight="bold"),
-            text_color="#93C5FD"
+            self.detail_nav_container, text="  \u25C8  OPEN ACCOUNTS",
+            font=ctk.CTkFont(size=9, weight="bold"),
+            text_color="#60A5FA"
         )
         self.detail_section_label.pack(fill="x", padx=16, pady=(0, 4), anchor="w")
 

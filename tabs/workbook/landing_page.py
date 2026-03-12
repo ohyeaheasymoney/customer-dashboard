@@ -15,8 +15,42 @@ class LandingPage(BaseSubTab):
         self._build_ui()
 
     def _build_ui(self):
+        # ── Quick Stats Row ────────────────────────────────────────────
+        stats_row = ctk.CTkFrame(self, fg_color="transparent")
+        stats_row.pack(fill="x", padx=16, pady=(16, 0))
+
+        self._stat_vars = {}
+        stat_defs = [
+            ("Follow-ups", "follow_ups", "#2563EB", "\u25F4"),
+            ("Overdue", "overdue", "#DC2626", "\u25B2"),
+            ("Notes", "notes", "#059669", "\u25A3"),
+            ("Actions", "actions", "#D97706", "\u2713"),
+        ]
+        for i, (label, key, color, icon) in enumerate(stat_defs):
+            stats_row.columnconfigure(i, weight=1, uniform="stat")
+            pill = ctk.CTkFrame(stats_row, fg_color="#FFFFFF",
+                                corner_radius=10, border_width=1,
+                                border_color=COLORS["border"])
+            pill.grid(row=0, column=i, padx=4, sticky="ew")
+
+            pill_inner = ctk.CTkFrame(pill, fg_color="transparent")
+            pill_inner.pack(padx=14, pady=10)
+
+            ctk.CTkLabel(pill_inner, text=icon,
+                         font=ctk.CTkFont(size=13),
+                         text_color=color).pack(side="left", padx=(0, 6))
+            var = tk.StringVar(value="0")
+            ctk.CTkLabel(pill_inner, textvariable=var,
+                         font=ctk.CTkFont(size=16, weight="bold"),
+                         text_color=COLORS["text"]).pack(side="left",
+                                                          padx=(0, 6))
+            ctk.CTkLabel(pill_inner, text=label,
+                         font=ctk.CTkFont(size=11),
+                         text_color=COLORS["text_dim"]).pack(side="left")
+            self._stat_vars[key] = var
+
         # ── Customer Info Card ─────────────────────────────────────────
-        info_card = self.make_card(pad_top=16)
+        info_card = self.make_card(pad_top=12)
         self.make_card_header(info_card, "Customer Information")
 
         info_grid = ctk.CTkFrame(info_card, fg_color="transparent")
@@ -70,7 +104,7 @@ class LandingPage(BaseSubTab):
         self.make_card_header(notes_card, "Notes")
 
         notes_body = ctk.CTkFrame(notes_card, fg_color="transparent")
-        notes_body.pack(fill="x", padx=18, pady=(10, 16))
+        notes_body.pack(fill="x", padx=20, pady=(10, 18))
 
         self.notes_text = ctk.CTkTextbox(notes_body, height=140,
                                          fg_color=COLORS["bg"],
@@ -118,6 +152,25 @@ class LandingPage(BaseSubTab):
         if not customer:
             return
 
+        # Update quick stats
+        follow_ups = db.get_follow_ups_for_customer(self.conn, self.customer_id)
+        today = datetime.now().strftime("%Y-%m-%d")
+        n_fu = len(follow_ups)
+        n_overdue = sum(1 for fu in follow_ups
+                        if fu["status"] != "completed" and fu["due_date"] < today)
+        notes = db.get_notes_for_customer(self.conn, self.customer_id)
+        n_notes = len(notes)
+        try:
+            actions = db.get_action_items(self.conn, self.customer_id)
+            n_actions = len(actions)
+        except Exception:
+            n_actions = 0
+
+        self._stat_vars["follow_ups"].set(str(n_fu))
+        self._stat_vars["overdue"].set(str(n_overdue))
+        self._stat_vars["notes"].set(str(n_notes))
+        self._stat_vars["actions"].set(str(n_actions))
+
         tags = db.get_customer_tags(self.conn, self.customer_id)
 
         # Info labels
@@ -132,10 +185,8 @@ class LandingPage(BaseSubTab):
 
         # Follow-ups
         self.fu_tree.delete(*self.fu_tree.get_children())
-        today = datetime.now().strftime("%Y-%m-%d")
         upcoming_date = (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d")
-        for idx, fu in enumerate(
-                db.get_follow_ups_for_customer(self.conn, self.customer_id)):
+        for idx, fu in enumerate(follow_ups):
             if fu["status"] == "completed":
                 tag = "completed"
             elif fu["due_date"] < today:
@@ -152,7 +203,7 @@ class LandingPage(BaseSubTab):
         # Notes
         self.notes_text.configure(state="normal")
         self.notes_text.delete("0.0", "end")
-        for note in db.get_notes_for_customer(self.conn, self.customer_id):
+        for note in notes:
             self.notes_text.insert("end", f"{note['created_at']}\n")
             self.notes_text.insert("end", f"{note['content']}\n\n")
         self.notes_text.configure(state="disabled")
