@@ -32,7 +32,7 @@ class AccountGoalsTab(BaseSubTab):
         self.moonshot_text = ctk.CTkTextbox(meta_body, height=60,
                                             fg_color=COLORS["bg"],
                                             text_color=COLORS["text"],
-                                            corner_radius=8, border_width=1,
+                                            corner_radius=0, border_width=1,
                                             border_color=COLORS["border"],
                                             font=ctk.CTkFont(size=12))
         self.moonshot_text.pack(fill="x", pady=(4, 10))
@@ -43,7 +43,7 @@ class AccountGoalsTab(BaseSubTab):
         self.objectives_text = ctk.CTkTextbox(meta_body, height=60,
                                               fg_color=COLORS["bg"],
                                               text_color=COLORS["text"],
-                                              corner_radius=8, border_width=1,
+                                              corner_radius=0, border_width=1,
                                               border_color=COLORS["border"],
                                               font=ctk.CTkFont(size=12))
         self.objectives_text.pack(fill="x", pady=(4, 0))
@@ -162,7 +162,7 @@ class GoalDialog(ctk.CTkToplevel):
         ctk.CTkLabel(form, text="Goal", text_color=COLORS["text_dim"],
                      font=ctk.CTkFont(size=12)).grid(
             row=0, column=0, sticky="e", padx=(0, 14), pady=6)
-        self.goal_entry = ctk.CTkEntry(form, width=300, corner_radius=8)
+        self.goal_entry = ctk.CTkEntry(form, width=300, corner_radius=0)
         if existing:
             self.goal_entry.insert(0, existing["goal"])
         self.goal_entry.grid(row=0, column=1, pady=6, sticky="ew")
@@ -174,7 +174,7 @@ class GoalDialog(ctk.CTkToplevel):
             value=existing["status"] if existing else "Not Started")
         ctk.CTkComboBox(form, values=GOAL_STATUSES,
                         variable=self.status_var,
-                        width=300, corner_radius=8).grid(
+                        width=300, corner_radius=0).grid(
             row=1, column=1, pady=6, sticky="ew")
 
         ctk.CTkLabel(form, text="Notes", text_color=COLORS["text_dim"],
@@ -183,7 +183,7 @@ class GoalDialog(ctk.CTkToplevel):
         self.notes_text = ctk.CTkTextbox(form, height=80,
                                          fg_color=COLORS["bg"],
                                          text_color=COLORS["text"],
-                                         corner_radius=8, border_width=1,
+                                         corner_radius=0, border_width=1,
                                          border_color=COLORS["border"],
                                          font=ctk.CTkFont(size=12))
         self.notes_text.grid(row=2, column=1, pady=6, sticky="ew")

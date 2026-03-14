@@ -117,10 +117,10 @@ class ContactDialog(ctk.CTkToplevel):
                 values = RELATIONSHIPS if key == "relationship" else INFLUENCES
                 var = tk.StringVar(value=existing[key] if existing else values[-1])
                 w = ctk.CTkComboBox(form, values=values, variable=var,
-                                    width=260, corner_radius=8)
+                                    width=260, corner_radius=0)
                 self.entries[key] = var
             else:
-                w = ctk.CTkEntry(form, width=260, corner_radius=8)
+                w = ctk.CTkEntry(form, width=260, corner_radius=0)
                 if existing and existing.get(key):
                     w.insert(0, existing[key])
                 self.entries[key] = w

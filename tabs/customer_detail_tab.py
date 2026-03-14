@@ -96,7 +96,7 @@ class CustomerDetailTab(ctk.CTkFrame):
         name_block.pack(side="left")
 
         self.name_label = ctk.CTkLabel(
-            name_block, text="", font=ctk.CTkFont(size=20, weight="bold"),
+            name_block, text="", font=ctk.CTkFont(size=16, weight="bold"),
             text_color="#1E293B")
         self.name_label.pack(anchor="w")
 
@@ -110,22 +110,24 @@ class CustomerDetailTab(ctk.CTkFrame):
         right.pack(side="right")
 
         ctk.CTkButton(
-            right, text="Edit", width=80, height=34, corner_radius=8,
+            right, text="Edit", width=80, height=32, corner_radius=8,
             fg_color="#F1F5F9", hover_color="#E2E8F0", text_color="#1E293B",
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=11),
             border_width=1, border_color="#CBD5E1",
-            command=self._edit_customer).pack(side="left", padx=(0, 8))
+            command=self._edit_customer).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
-            right, text="Send Email", width=110, height=34, corner_radius=8,
-            fg_color="#2563EB", hover_color="#1D4ED8",
-            font=ctk.CTkFont(size=12, weight="bold"),
-            command=self._send_email).pack(side="left", padx=(0, 8))
+            right, text="Send Email", width=100, height=32, corner_radius=8,
+            fg_color="#EFF6FF", hover_color="#DBEAFE", text_color="#1D4ED8",
+            font=ctk.CTkFont(size=11),
+            border_width=1, border_color="#BFDBFE",
+            command=self._send_email).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
-            right, text="Close", width=80, height=34, corner_radius=8,
-            fg_color="#FEE2E2", hover_color="#FECACA", text_color="#991B1B",
-            font=ctk.CTkFont(size=12),
+            right, text="Close", width=72, height=32, corner_radius=8,
+            fg_color="#FEF2F2", hover_color="#FEE2E2", text_color="#991B1B",
+            font=ctk.CTkFont(size=11),
+            border_width=1, border_color="#FECACA",
             command=self._close_tab).pack(side="left")
 
         # Bottom border on header
@@ -137,7 +139,7 @@ class CustomerDetailTab(ctk.CTkFrame):
         body.pack(fill="both", expand=True)
 
         # Left nav panel
-        nav_panel = ctk.CTkFrame(body, fg_color="#FFFFFF", width=185,
+        nav_panel = ctk.CTkFrame(body, fg_color="#FFFFFF", width=200,
                                  corner_radius=0)
         nav_panel.pack(side="left", fill="y")
         nav_panel.pack_propagate(False)
@@ -289,7 +291,7 @@ class FollowUpDialog(ctk.CTkToplevel):
                      font=ctk.CTkFont(size=12),
                      text_color="#64748B").grid(row=0, column=0, sticky="e",
                                                 padx=(0, 14), pady=6)
-        self.date_entry = ctk.CTkEntry(form, width=260, corner_radius=8,
+        self.date_entry = ctk.CTkEntry(form, width=260, corner_radius=0,
                                         placeholder_text="YYYY-MM-DD")
         self.date_entry.insert(0,
                                existing["due_date"] if existing
@@ -306,7 +308,7 @@ class FollowUpDialog(ctk.CTkToplevel):
             form,
             values=["call", "email", "meeting"],
             variable=self.type_var,
-            width=260, corner_radius=8
+            width=260, corner_radius=0
         )
         self.type_combo.grid(row=1, column=1, pady=6, sticky="ew")
 
@@ -318,7 +320,7 @@ class FollowUpDialog(ctk.CTkToplevel):
                                          fg_color="#F8FAFC",
                                          text_color="#1E293B",
                                          font=ctk.CTkFont(size=12),
-                                         corner_radius=8,
+                                         corner_radius=0,
                                          border_width=1,
                                          border_color="#CBD5E1")
         self.desc_text.grid(row=2, column=1, pady=6, sticky="ew")
@@ -391,7 +393,7 @@ class ComposeEmailDialog(ctk.CTkToplevel):
                      font=ctk.CTkFont(size=12),
                      text_color="#64748B").grid(row=0, column=0, sticky="e",
                                                 padx=(0, 14), pady=6)
-        self.to_entry = ctk.CTkEntry(form, width=400, corner_radius=8)
+        self.to_entry = ctk.CTkEntry(form, width=400, corner_radius=0)
         self.to_entry.insert(0, customer.get("email", ""))
         self.to_entry.grid(row=0, column=1, pady=6, sticky="ew")
 
@@ -399,7 +401,7 @@ class ComposeEmailDialog(ctk.CTkToplevel):
                      font=ctk.CTkFont(size=12),
                      text_color="#64748B").grid(row=1, column=0, sticky="e",
                                                 padx=(0, 14), pady=6)
-        self.subject_entry = ctk.CTkEntry(form, width=400, corner_radius=8,
+        self.subject_entry = ctk.CTkEntry(form, width=400, corner_radius=0,
                                            placeholder_text="Enter subject...")
         self.subject_entry.grid(row=1, column=1, pady=6, sticky="ew")
 
@@ -411,7 +413,7 @@ class ComposeEmailDialog(ctk.CTkToplevel):
                                          fg_color="#F8FAFC",
                                          text_color="#1E293B",
                                          font=ctk.CTkFont(size=12),
-                                         corner_radius=8,
+                                         corner_radius=0,
                                          border_width=1,
                                          border_color="#CBD5E1")
         self.body_text.grid(row=2, column=1, pady=6, sticky="nsew")

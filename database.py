@@ -579,6 +579,27 @@ def get_customers_by_company(conn, limit=10):
     return [dict(r) for r in rows]
 
 
+def get_customers_by_category(conn):
+    """Return customer counts grouped by category."""
+    rows = conn.execute("""
+        SELECT category, COUNT(*) as count FROM customers
+        GROUP BY category ORDER BY count DESC
+    """).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_customer_growth(conn):
+    """Return customer counts by month for the last 12 months."""
+    rows = conn.execute("""
+        SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as count
+        FROM customers
+        WHERE created_at >= date('now', '-12 months')
+        GROUP BY month
+        ORDER BY month
+    """).fetchall()
+    return [dict(r) for r in rows]
+
+
 # --- Account Resources ---
 
 def get_account_resources(conn, customer_id):

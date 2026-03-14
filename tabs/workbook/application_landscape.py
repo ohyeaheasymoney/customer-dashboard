@@ -114,10 +114,10 @@ class AppDialog(ctk.CTkToplevel):
                 var = tk.StringVar(
                     value=existing[key] if existing else "Standard")
                 w = ctk.CTkComboBox(form, values=CRITICALITIES, variable=var,
-                                    width=280, corner_radius=8)
+                                    width=280, corner_radius=0)
                 self.entries[key] = var
             else:
-                w = ctk.CTkEntry(form, width=280, corner_radius=8)
+                w = ctk.CTkEntry(form, width=280, corner_radius=0)
                 if existing and existing.get(key):
                     w.insert(0, existing[key])
                 self.entries[key] = w

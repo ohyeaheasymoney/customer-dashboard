@@ -118,7 +118,7 @@ class CphRowDialog(ctk.CTkToplevel):
         ctk.CTkLabel(form, text="Category", text_color=COLORS["text_dim"],
                      font=ctk.CTkFont(size=12)).grid(
             row=0, column=0, sticky="e", padx=(0, 14), pady=5)
-        self.cat_entry = ctk.CTkEntry(form, width=200, corner_radius=8)
+        self.cat_entry = ctk.CTkEntry(form, width=200, corner_radius=0)
         if existing:
             self.cat_entry.insert(0, existing["category"])
         self.cat_entry.grid(row=0, column=1, columnspan=3, pady=5, sticky="ew")
@@ -134,7 +134,7 @@ class CphRowDialog(ctk.CTkToplevel):
                          text_color=COLORS["text_dim"],
                          font=ctk.CTkFont(size=11)).grid(
                 row=r, column=label_col, sticky="e", padx=(8, 6), pady=4)
-            entry = ctk.CTkEntry(form, width=90, height=28, corner_radius=6,
+            entry = ctk.CTkEntry(form, width=90, height=28, corner_radius=0,
                                  placeholder_text="0")
             if existing:
                 val = existing.get(f"month_{i}", 0) or 0

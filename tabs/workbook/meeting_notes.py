@@ -82,7 +82,7 @@ class MeetingNoteDialog(ctk.CTkToplevel):
         ctk.CTkLabel(form, text="Date", text_color=COLORS["text_dim"],
                      font=ctk.CTkFont(size=12)).grid(
             row=0, column=0, sticky="e", padx=(0, 14), pady=6)
-        self.date_entry = ctk.CTkEntry(form, width=260, corner_radius=8,
+        self.date_entry = ctk.CTkEntry(form, width=260, corner_radius=0,
                                        placeholder_text="YYYY-MM-DD")
         self.date_entry.insert(0, existing["meeting_date"] if existing
                                else datetime.now().strftime("%Y-%m-%d"))
@@ -91,7 +91,7 @@ class MeetingNoteDialog(ctk.CTkToplevel):
         ctk.CTkLabel(form, text="Audience", text_color=COLORS["text_dim"],
                      font=ctk.CTkFont(size=12)).grid(
             row=1, column=0, sticky="e", padx=(0, 14), pady=6)
-        self.audience_entry = ctk.CTkEntry(form, width=260, corner_radius=8,
+        self.audience_entry = ctk.CTkEntry(form, width=260, corner_radius=0,
                                            placeholder_text="Who attended...")
         if existing and existing["audience"]:
             self.audience_entry.insert(0, existing["audience"])
@@ -103,7 +103,7 @@ class MeetingNoteDialog(ctk.CTkToplevel):
         self.notes_text = ctk.CTkTextbox(form, height=160,
                                          fg_color=COLORS["bg"],
                                          text_color=COLORS["text"],
-                                         corner_radius=8, border_width=1,
+                                         corner_radius=0, border_width=1,
                                          border_color=COLORS["border"],
                                          font=ctk.CTkFont(size=12))
         self.notes_text.grid(row=2, column=1, pady=6, sticky="nsew")

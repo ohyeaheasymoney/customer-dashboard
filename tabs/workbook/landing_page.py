@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import customtkinter as ctk
 import database as db
 from tabs.workbook.base_subtab import BaseSubTab, COLORS
+from utils import relative_date
 
 
 class LandingPage(BaseSubTab):
@@ -81,8 +82,8 @@ class LandingPage(BaseSubTab):
             ("+ Add Follow-up", self._add_follow_up, {}),
         ])
 
-        cols = ("due_date", "type", "status", "description")
-        widths = {"due_date": 110, "type": 80, "status": 90, "description": 300}
+        cols = ("due_date", "when", "type", "status", "description")
+        widths = {"due_date": 100, "when": 90, "type": 70, "status": 80, "description": 260}
         self.fu_tree, _ = self.make_treeview(fu_card, cols, widths, height=6)
 
         self.fu_tree.tag_configure("overdue",
@@ -91,6 +92,8 @@ class LandingPage(BaseSubTab):
                                    background="#FEF3C7", foreground="#92400E")
         self.fu_tree.tag_configure("completed",
                                    background="#F1F5F9", foreground="#94A3B8")
+
+        self.fu_tree.bind("<Double-1>", lambda e: self._edit_follow_up())
 
         self.make_context_menu(self.fu_tree, [
             ("Mark Completed", self._complete_follow_up),
@@ -110,7 +113,7 @@ class LandingPage(BaseSubTab):
                                          fg_color=COLORS["bg"],
                                          text_color=COLORS["text"],
                                          font=ctk.CTkFont(size=12),
-                                         corner_radius=8)
+                                         corner_radius=0)
         self.notes_text.pack(fill="x", pady=(0, 10))
         self.notes_text.configure(state="disabled")
 
@@ -121,7 +124,7 @@ class LandingPage(BaseSubTab):
                                          fg_color=COLORS["bg"],
                                          text_color=COLORS["text"],
                                          font=ctk.CTkFont(size=12),
-                                         corner_radius=8,
+                                         corner_radius=0,
                                          border_width=1,
                                          border_color=COLORS["border"])
         self.note_input.pack(fill="x", pady=(4, 0))
@@ -143,7 +146,7 @@ class LandingPage(BaseSubTab):
                                        fg_color=COLORS["bg"],
                                        text_color=COLORS["text"],
                                        font=ctk.CTkFont(size=12),
-                                       corner_radius=8)
+                                       corner_radius=0)
         self.log_text.pack(fill="x")
         self.log_text.configure(state="disabled")
 
@@ -195,8 +198,9 @@ class LandingPage(BaseSubTab):
                 tag = "upcoming"
             else:
                 tag = "evenrow" if idx % 2 == 0 else "oddrow"
+            rel = relative_date(fu["due_date"])
             self.fu_tree.insert("", "end", iid=str(fu["id"]),
-                                values=(fu["due_date"], fu["type"],
+                                values=(fu["due_date"], rel, fu["type"],
                                         fu["status"], fu["description"]),
                                 tags=(tag,))
 

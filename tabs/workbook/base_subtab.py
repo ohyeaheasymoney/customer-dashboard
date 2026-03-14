@@ -67,7 +67,7 @@ class BaseSubTab(ctk.CTkScrollableFrame):
                      text_color=COLORS["primary"]).pack(side="left",
                                                          padx=(0, 8))
         ctk.CTkLabel(title_frame, text=title,
-                     font=ctk.CTkFont(size=15, weight="bold"),
+                     font=ctk.CTkFont(size=14, weight="bold"),
                      text_color=COLORS["text"]).pack(side="left")
 
         if buttons:
@@ -112,18 +112,21 @@ class BaseSubTab(ctk.CTkScrollableFrame):
         return tree, frame
 
     def make_context_menu(self, tree, items):
-        """Create a right-click context menu for a treeview."""
+        """Create a right-click context menu and double-click-to-edit for a treeview."""
         menu = tk.Menu(self, tearoff=0,
                        bg="#FFFFFF", fg=COLORS["text"],
                        activebackground=COLORS["primary"],
                        activeforeground="#FFFFFF",
                        font=("Helvetica", 10))
+        edit_cmd = None
         for item in items:
             if item is None:
                 menu.add_separator()
             else:
                 label, cmd = item
                 menu.add_command(label=f"  {label}", command=cmd)
+                if label.lower() == "edit" and edit_cmd is None:
+                    edit_cmd = cmd
 
         def show_menu(event):
             row = tree.identify_row(event.y)
@@ -132,6 +135,11 @@ class BaseSubTab(ctk.CTkScrollableFrame):
                 menu.post(event.x_root, event.y_root)
 
         tree.bind("<Button-3>", show_menu)
+
+        # Double-click to edit
+        if edit_cmd:
+            tree.bind("<Double-1>", lambda e: edit_cmd())
+
         return menu
 
     def get_selected_id(self, tree, label="item"):

@@ -121,7 +121,7 @@ class InitiativeItemDialog(ctk.CTkToplevel):
         self.text = ctk.CTkTextbox(self, height=120,
                                    fg_color=COLORS["bg"],
                                    text_color=COLORS["text"],
-                                   corner_radius=8, border_width=1,
+                                   corner_radius=0, border_width=1,
                                    border_color=COLORS["border"],
                                    font=ctk.CTkFont(size=12))
         self.text.pack(fill="x", padx=24, pady=4)

@@ -116,20 +116,20 @@ class ActionItemDialog(ctk.CTkToplevel):
                 var = tk.StringVar(
                     value=existing[key] if existing else "On Track")
                 w = ctk.CTkComboBox(form, values=STATUSES, variable=var,
-                                    width=300, corner_radius=8)
+                                    width=300, corner_radius=0)
                 self.entries[key] = var
             elif ftype == "text":
                 w = ctk.CTkTextbox(form, height=80,
                                    fg_color=COLORS["bg"],
                                    text_color=COLORS["text"],
-                                   corner_radius=8, border_width=1,
+                                   corner_radius=0, border_width=1,
                                    border_color=COLORS["border"],
                                    font=ctk.CTkFont(size=12))
                 if existing and existing.get(key):
                     w.insert("0.0", existing[key])
                 self.entries[key] = w
             else:
-                w = ctk.CTkEntry(form, width=300, corner_radius=8)
+                w = ctk.CTkEntry(form, width=300, corner_radius=0)
                 if key == "due_date" and not existing:
                     w.configure(placeholder_text="YYYY-MM-DD")
                 if existing and existing.get(key):

@@ -98,7 +98,7 @@ class HwSwDialog(ctk.CTkToplevel):
             ctk.CTkLabel(form, text=label, text_color=COLORS["text_dim"],
                          font=ctk.CTkFont(size=12)).grid(
                 row=i, column=0, sticky="e", padx=(0, 14), pady=5)
-            entry = ctk.CTkEntry(form, width=280, corner_radius=8)
+            entry = ctk.CTkEntry(form, width=280, corner_radius=0)
             if existing and existing.get(key) is not None:
                 entry.insert(0, str(existing[key]))
             entry.grid(row=i, column=1, pady=5, sticky="ew")

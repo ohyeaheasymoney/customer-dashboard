@@ -9,6 +9,7 @@ import customtkinter as ctk
 import database as db
 from backup import backup_database, restore_database
 from email_sender import load_smtp_config, save_smtp_config, test_connection
+from updater import get_version, check_for_updates, apply_update
 
 from tabs.dashboard_tab import DashboardTab
 from tabs.customers_tab import CustomersTab
@@ -123,25 +124,42 @@ class App(ctk.CTkFrame):
         self.detail_tabs = {}   # customer_id -> page_name
         self.active_page = None
 
-        # ── Create core pages ─────────────────────────────────────────
-        self.dashboard_tab = DashboardTab(self.content_frame, self.conn)
-        self._register_page("dashboard", self.dashboard_tab, "\u25A3  Dashboard")
+        # ── Lazy tab definitions (created on first show) ────────────
+        self._tab_factories = {
+            "dashboard": lambda: DashboardTab(self.content_frame, self.conn),
+            "customers": lambda: CustomersTab(self.content_frame, self.conn, self),
+            "follow_ups": lambda: FollowUpsTab(self.content_frame, self.conn, self),
+        }
+        self._tab_labels = {
+            "dashboard": "\u25A3  Dashboard",
+            "customers": "\u25A1  Customers",
+            "follow_ups": "\u25F4  Follow-ups",
+        }
+        self.dashboard_tab = None
+        self.customers_tab = None
+        self.follow_ups_tab = None
 
-        self.customers_tab = CustomersTab(self.content_frame, self.conn, self)
-        self._register_page("customers", self.customers_tab, "\u25A1  Customers")
-
-        self.follow_ups_tab = FollowUpsTab(self.content_frame, self.conn, self)
-        self._register_page("follow_ups", self.follow_ups_tab, "\u25F4  Follow-ups")
+        # Register nav buttons (but don't create tab widgets yet)
+        for name in ("dashboard", "customers", "follow_ups"):
+            self._register_nav_button(name, self._tab_labels[name])
 
         # Separator before detail tabs section
         self.detail_separator = None
         self.detail_section_label = None
 
-        # Show dashboard by default
+        # Show dashboard by default (this will lazily create it)
         self.show_page("dashboard")
 
-        # Initial refresh
-        self.refresh_all_tabs()
+        # Keyboard shortcuts
+        self.root.bind("<Control-n>", lambda e: self._shortcut_add_customer())
+        self.root.bind("<Control-f>", lambda e: self._shortcut_focus_search())
+        self.root.bind("<Escape>", lambda e: self._shortcut_close_detail())
+        self.root.bind("<Control-d>", lambda e: self.show_page("dashboard"))
+        self.root.bind("<Control-u>", lambda e: self._check_updates())
+
+        # Overdue badge — update periodically
+        self._overdue_badge_label = None
+        self.after(500, self._update_overdue_badge)
 
     def _on_close(self):
         """Close DB connection and destroy the application window."""
@@ -154,9 +172,9 @@ class App(ctk.CTkFrame):
 
     def _update_all_connections(self):
         """Update conn reference in all tabs after a restore."""
-        self.dashboard_tab.conn = self.conn
-        self.customers_tab.conn = self.conn
-        self.follow_ups_tab.conn = self.conn
+        for tab in (self.dashboard_tab, self.customers_tab, self.follow_ups_tab):
+            if tab is not None:
+                tab.conn = self.conn
         for page_name in self.detail_tabs.values():
             if page_name in self.pages:
                 self.pages[page_name].conn = self.conn
@@ -197,6 +215,20 @@ class App(ctk.CTkFrame):
         sep = ctk.CTkFrame(self.sidebar, fg_color="#3B82F6", height=1)
         sep.pack(fill="x", padx=16, pady=(16, 12))
 
+        # Quick search
+        search_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        search_frame.pack(fill="x", padx=12, pady=(0, 10))
+        self.sidebar_search = ctk.CTkEntry(
+            search_frame, height=30, corner_radius=0,
+            fg_color="#1E40AF", border_width=0,
+            text_color="#FFFFFF",
+            placeholder_text="Search customers...",
+            placeholder_text_color="#60A5FA",
+            font=ctk.CTkFont(size=11),
+        )
+        self.sidebar_search.pack(fill="x")
+        self.sidebar_search.bind("<Return>", self._sidebar_search_go)
+
         # Section label
         ctk.CTkLabel(self.sidebar, text="  NAVIGATION",
                      font=ctk.CTkFont(size=9, weight="bold"),
@@ -216,9 +248,23 @@ class App(ctk.CTkFrame):
 
         ctk.CTkFrame(bottom, fg_color="#3B82F6", height=1).pack(
             fill="x", pady=(0, 10))
-        ctk.CTkLabel(bottom, text="\u2726  Ajay's CRM  v2.0",
+
+        ver_row = ctk.CTkFrame(bottom, fg_color="transparent")
+        ver_row.pack(fill="x")
+        ctk.CTkLabel(ver_row, text=f"\u2726  Ajay's CRM  v{get_version()}",
                      font=ctk.CTkFont(size=10),
-                     text_color="#60A5FA").pack(anchor="w")
+                     text_color="#60A5FA").pack(side="left")
+
+        # One-click update button
+        self.update_btn = ctk.CTkButton(
+            ver_row, text="\u2B06", width=26, height=22,
+            corner_radius=4, fg_color="#1E40AF",
+            hover_color="#2563EB", text_color="#93C5FD",
+            font=ctk.CTkFont(size=11),
+            command=self._check_updates
+        )
+        self.update_btn.pack(side="right")
+
         ctk.CTkLabel(bottom, text="Built with CustomTkinter",
                      font=ctk.CTkFont(size=9),
                      text_color="#3B82F6").pack(anchor="w", pady=(2, 0))
@@ -229,62 +275,79 @@ class App(ctk.CTkFrame):
                                            corner_radius=0)
         self.content_frame.grid(row=0, column=1, sticky="nsew")
 
-    def _register_page(self, name, frame, label, is_detail=False):
-        """Register a page and create its sidebar nav button."""
+    def _register_nav_button(self, name, label):
+        """Create a sidebar nav button without creating the tab widget."""
+        nav_btn = ctk.CTkButton(
+            self.nav_container, text=label,
+            fg_color="transparent",
+            hover_color=COLORS["sidebar_hover"],
+            text_color="#DBEAFE",
+            anchor="w", height=40,
+            font=ctk.CTkFont(size=13),
+            corner_radius=6,
+            command=lambda n=name: self.show_page(n)
+        )
+        nav_btn.pack(fill="x", padx=8, pady=1)
+        self.nav_buttons[name] = {"button": nav_btn}
+
+    def _register_detail_page(self, name, frame, label):
+        """Register a detail page with close button in sidebar."""
         self.pages[name] = frame
-        # Place frame but hide it
         frame.place(relx=0, rely=0, relwidth=1, relheight=1)
         frame.lower()
 
-        container = self.detail_nav_container if is_detail else self.nav_container
+        row_frame = ctk.CTkFrame(self.detail_nav_container, fg_color="transparent")
+        row_frame.pack(fill="x", padx=8, pady=1)
 
-        if is_detail:
-            # For detail tabs, create a frame with button + close button
-            row_frame = ctk.CTkFrame(container, fg_color="transparent")
-            row_frame.pack(fill="x", padx=8, pady=1)
+        nav_btn = ctk.CTkButton(
+            row_frame, text=label,
+            fg_color="transparent",
+            hover_color=COLORS["sidebar_hover"],
+            text_color="#DBEAFE",
+            anchor="w", height=36,
+            font=ctk.CTkFont(size=12),
+            corner_radius=6,
+            command=lambda n=name: self.show_page(n)
+        )
+        nav_btn.pack(side="left", fill="x", expand=True)
 
-            nav_btn = ctk.CTkButton(
-                row_frame, text=label,
-                fg_color="transparent",
-                hover_color=COLORS["sidebar_hover"],
-                text_color="#DBEAFE",
-                anchor="w", height=36,
-                font=ctk.CTkFont(size=12),
-                corner_radius=6,
-                command=lambda n=name: self.show_page(n)
-            )
-            nav_btn.pack(side="left", fill="x", expand=True)
+        cid = int(name.replace("detail_", ""))
+        close_btn = ctk.CTkButton(
+            row_frame, text="\u2715", width=28, height=28,
+            fg_color="transparent",
+            hover_color="#DC2626",
+            text_color="#93C5FD",
+            font=ctk.CTkFont(size=11),
+            corner_radius=4,
+            command=lambda c=cid: self.close_customer_detail(c)
+        )
+        close_btn.pack(side="right", padx=(0, 4))
 
-            # Close button
-            cid = int(name.replace("detail_", ""))
-            close_btn = ctk.CTkButton(
-                row_frame, text="\u2715", width=28, height=28,
-                fg_color="transparent",
-                hover_color="#DC2626",
-                text_color="#93C5FD",
-                font=ctk.CTkFont(size=11),
-                corner_radius=4,
-                command=lambda c=cid: self.close_customer_detail(c)
-            )
-            close_btn.pack(side="right", padx=(0, 4))
+        self.nav_buttons[name] = {"button": nav_btn, "frame": row_frame}
 
-            self.nav_buttons[name] = {"button": nav_btn, "frame": row_frame}
-        else:
-            nav_btn = ctk.CTkButton(
-                container, text=label,
-                fg_color="transparent",
-                hover_color=COLORS["sidebar_hover"],
-                text_color="#DBEAFE",
-                anchor="w", height=40,
-                font=ctk.CTkFont(size=13),
-                corner_radius=6,
-                command=lambda n=name: self.show_page(n)
-            )
-            nav_btn.pack(fill="x", padx=8, pady=1)
-            self.nav_buttons[name] = {"button": nav_btn}
+    def _ensure_tab(self, name):
+        """Lazily create a tab widget if it hasn't been created yet."""
+        if name in self.pages:
+            return
+        if name not in self._tab_factories:
+            return
+        tab = self._tab_factories[name]()
+        self.pages[name] = tab
+        tab.place(relx=0, rely=0, relwidth=1, relheight=1)
+        tab.lower()
+        # Store reference for refresh_all_tabs
+        if name == "dashboard":
+            self.dashboard_tab = tab
+        elif name == "customers":
+            self.customers_tab = tab
+        elif name == "follow_ups":
+            self.follow_ups_tab = tab
 
     def show_page(self, name):
         """Show the specified page and highlight its nav item."""
+        # Lazily create the tab if needed
+        self._ensure_tab(name)
+
         if name not in self.pages:
             return
 
@@ -325,12 +388,15 @@ class App(ctk.CTkFrame):
         file_menu.add_command(label="  Backup Database", command=self._backup)
         file_menu.add_command(label="  Restore from Backup...", command=self._restore)
         file_menu.add_separator()
+        file_menu.add_command(label="  Check for Updates  (Ctrl+U)",
+                              command=self._check_updates)
+        file_menu.add_separator()
         file_menu.add_command(label="  Exit", command=self._on_close)
 
     def refresh_all_tabs(self):
-        self.dashboard_tab.refresh()
-        self.customers_tab.refresh()
-        self.follow_ups_tab.refresh()
+        for tab in (self.dashboard_tab, self.customers_tab, self.follow_ups_tab):
+            if tab is not None:
+                tab.refresh()
         for cid, page_name in list(self.detail_tabs.items()):
             if page_name in self.pages:
                 page = self.pages[page_name]
@@ -355,7 +421,7 @@ class App(ctk.CTkFrame):
             self._show_detail_section()
 
         detail = CustomerDetailTab(self.content_frame, self.conn, customer_id, self)
-        self._register_page(page_name, detail, "\u25B8  " + customer["name"], is_detail=True)
+        self._register_detail_page(page_name, detail, "\u25B8  " + customer["name"])
         self.detail_tabs[customer_id] = page_name
         self.show_page(page_name)
         detail.refresh()
@@ -409,6 +475,82 @@ class App(ctk.CTkFrame):
         # Hide detail section if no more detail tabs
         if not self.detail_tabs:
             self._hide_detail_section()
+
+    # ── Keyboard shortcuts ──────────────────────────────────────────
+
+    def _shortcut_add_customer(self):
+        """Ctrl+N — open add customer dialog."""
+        self.show_page("customers")
+        if self.customers_tab:
+            self.customers_tab._add_customer()
+
+    def _shortcut_focus_search(self):
+        """Ctrl+F — focus the sidebar search."""
+        self.sidebar_search.focus_set()
+        self.sidebar_search.select_range(0, "end")
+
+    def _shortcut_close_detail(self):
+        """Escape — close current detail tab or clear search."""
+        if self.sidebar_search == self.root.focus_get():
+            self.sidebar_search.delete(0, "end")
+            self.root.focus_set()
+            return
+        if self.active_page and self.active_page.startswith("detail_"):
+            cid = int(self.active_page.replace("detail_", ""))
+            self.close_customer_detail(cid)
+
+    def _sidebar_search_go(self, event=None):
+        """Enter in sidebar search — switch to customers tab with query."""
+        query = self.sidebar_search.get().strip()
+        if not query:
+            return
+        self.show_page("customers")
+        if self.customers_tab:
+            self.customers_tab.search_var.set(query)
+        self.sidebar_search.delete(0, "end")
+        self.root.focus_set()
+
+    # ── Overdue badge ────────────────────────────────────────────────
+
+    def _update_overdue_badge(self):
+        """Show overdue count badge on Follow-ups nav button."""
+        try:
+            stats = db.get_stats(self.conn)
+            overdue = stats.get("overdue_follow_ups", 0)
+        except Exception:
+            overdue = 0
+
+        fu_btn_info = self.nav_buttons.get("follow_ups")
+        if fu_btn_info:
+            btn = fu_btn_info["button"]
+            if overdue > 0:
+                btn.configure(text=f"\u25F4  Follow-ups  ({overdue})")
+            else:
+                btn.configure(text="\u25F4  Follow-ups")
+
+        # Refresh every 60 seconds
+        self.after(60000, self._update_overdue_badge)
+
+    # ── Version updater ──────────────────────────────────────────────
+
+    def _check_updates(self):
+        """Check for updates and offer to apply them."""
+        self.update_btn.configure(text="\u2026", state="disabled")
+        self.root.update_idletasks()
+
+        has_update, msg = check_for_updates()
+        self.update_btn.configure(text="\u2B06", state="normal")
+
+        if has_update:
+            if messagebox.askyesno("Update Available",
+                                    f"{msg}\n\nDownload and install update?"):
+                success, result_msg = apply_update()
+                if success:
+                    messagebox.showinfo("Updated", result_msg)
+                else:
+                    messagebox.showerror("Update Failed", result_msg)
+        else:
+            messagebox.showinfo("Up to Date", msg)
 
     def _email_settings(self):
         SmtpSettingsDialog(self.root)
@@ -499,7 +641,7 @@ class SmtpSettingsDialog(ctk.CTkToplevel):
                          font=ctk.CTkFont(size=12),
                          text_color="#64748B").grid(
                 row=i, column=0, padx=(0, 16), pady=6, sticky="e")
-            entry = ctk.CTkEntry(form, width=280, corner_radius=8,
+            entry = ctk.CTkEntry(form, width=280, corner_radius=0,
                                   placeholder_text=f"Enter {label.lower()}...")
             if key == "password":
                 entry.configure(show="*")

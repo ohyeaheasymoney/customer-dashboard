@@ -26,10 +26,10 @@ class CustomersTab(ctk.CTkFrame):
         title_row = ctk.CTkFrame(header_left, fg_color="transparent")
         title_row.pack(anchor="w")
         ctk.CTkLabel(title_row, text="\u25A1",
-                     font=ctk.CTkFont(size=20),
+                     font=ctk.CTkFont(size=16),
                      text_color="#2563EB").pack(side="left", padx=(0, 8))
         ctk.CTkLabel(title_row, text="Customers",
-                     font=ctk.CTkFont(size=22, weight="bold"),
+                     font=ctk.CTkFont(size=18, weight="bold"),
                      text_color="#1E293B").pack(side="left")
         ctk.CTkLabel(header_left, text="Manage your customer accounts",
                      font=ctk.CTkFont(size=11),
@@ -71,7 +71,7 @@ class CustomersTab(ctk.CTkFrame):
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self.refresh())
         search_entry = ctk.CTkEntry(filter_inner, textvariable=self.search_var,
-                                     width=180, corner_radius=8,
+                                     width=180, corner_radius=0,
                                      placeholder_text="Search customers...")
         search_entry.grid(row=0, column=1, padx=(0, 18), sticky="ew")
 
@@ -84,7 +84,7 @@ class CustomersTab(ctk.CTkFrame):
             filter_inner,
             values=["All", "VIP", "Lead", "Active", "Inactive"],
             variable=self.cat_var,
-            width=120, corner_radius=8,
+            width=120, corner_radius=0,
             command=lambda _: self.refresh()
         )
         self.cat_combo.grid(row=0, column=3, padx=(0, 18))
@@ -98,7 +98,7 @@ class CustomersTab(ctk.CTkFrame):
             filter_inner,
             values=["All"],
             variable=self.tag_var,
-            width=140, corner_radius=8,
+            width=140, corner_radius=0,
             command=lambda _: self.refresh()
         )
         self.tag_combo.grid(row=0, column=5, padx=(0, 18))
@@ -112,7 +112,7 @@ class CustomersTab(ctk.CTkFrame):
             filter_inner,
             values=["All"],
             variable=self.company_var,
-            width=160, corner_radius=8,
+            width=160, corner_radius=0,
             command=lambda _: self.refresh()
         )
         self.company_combo.grid(row=0, column=7)
@@ -131,10 +131,13 @@ class CustomersTab(ctk.CTkFrame):
         self.tree = ttk.Treeview(tree_inner, columns=cols, show="headings",
                                  selectmode="browse")
 
+        self._col_headings = {"name": "Name", "company": "Company",
+                              "phone": "Phone", "email": "Email",
+                              "category": "Category", "tags": "Tags"}
         col_widths = {"name": 160, "company": 140, "phone": 120,
                       "email": 180, "category": 90, "tags": 160}
         for col in cols:
-            self.tree.heading(col, text=col.replace("_", " ").title(),
+            self.tree.heading(col, text=self._col_headings[col],
                               command=lambda c=col: self._sort_column(c))
             self.tree.column(col, width=col_widths.get(col, 120), minwidth=60)
 
@@ -171,6 +174,15 @@ class CustomersTab(ctk.CTkFrame):
             self._sort_reverse = False
         self.refresh()
 
+    def _update_sort_indicators(self):
+        """Show sort arrow on active column heading."""
+        for col, base_text in self._col_headings.items():
+            if col == self._sort_col:
+                arrow = " \u25BC" if self._sort_reverse else " \u25B2"
+                self.tree.heading(col, text=base_text + arrow)
+            else:
+                self.tree.heading(col, text=base_text)
+
     def refresh(self):
         # Update filter combos
         tags = ["All"] + db.get_all_tags(self.conn)
@@ -202,6 +214,7 @@ class CustomersTab(ctk.CTkFrame):
                              values=(c["name"], c["company"], c["phone"],
                                      c["email"], c["category"], c["tags"]),
                              tags=(row_tag,))
+        self._update_sort_indicators()
 
     def _get_selected_id(self):
         sel = self.tree.selection()
@@ -318,7 +331,7 @@ class CustomerDialog(ctk.CTkToplevel):
                          font=ctk.CTkFont(size=12),
                          text_color="#64748B").grid(
                 row=i, column=0, padx=(0, 14), pady=6, sticky="e")
-            entry = ctk.CTkEntry(form, width=280, corner_radius=8,
+            entry = ctk.CTkEntry(form, width=280, corner_radius=0,
                                   placeholder_text=f"Enter {label.lower()}...")
             entry.insert(0, customer.get(key, "") if customer else "")
             entry.grid(row=i, column=1, pady=6, sticky="ew")
@@ -336,7 +349,7 @@ class CustomerDialog(ctk.CTkToplevel):
             form,
             values=["VIP", "Lead", "Active", "Inactive"],
             variable=self.cat_var,
-            width=280, corner_radius=8
+            width=280, corner_radius=0
         )
         self.cat_combo.grid(row=row, column=1, pady=6, sticky="ew")
 
@@ -353,7 +366,7 @@ class CustomerDialog(ctk.CTkToplevel):
         tag_input_row = ctk.CTkFrame(tag_section, fg_color="transparent")
         tag_input_row.pack(fill="x", pady=(6, 4))
         self.tag_entry_widget = ctk.CTkEntry(tag_input_row, width=180,
-                                              corner_radius=8,
+                                              corner_radius=0,
                                               placeholder_text="Enter tag...")
         self.tag_entry_widget.pack(side="left", padx=(0, 6))
         ctk.CTkButton(tag_input_row, text="Add", width=60, height=30,
