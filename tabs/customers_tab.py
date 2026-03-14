@@ -1,5 +1,6 @@
 """Customers page -- customer list with search, filters, add/edit/delete."""
 
+import re
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
@@ -250,14 +251,17 @@ class CustomersTab(ctk.CTkFrame):
         filepath = filedialog.asksaveasfilename(defaultextension=".csv",
                                                  filetypes=[("CSV files", "*.csv")])
         if filepath:
-            customers = db.search_customers(
-                self.conn, text=self.search_var.get(),
-                category=self.cat_var.get(), tag_name=self.tag_var.get(),
-                company=self.company_var.get()
-            )
-            export_customers_csv(customers, filepath)
-            messagebox.showinfo("Export",
-                                f"Exported {len(customers)} customers to CSV.")
+            try:
+                customers = db.search_customers(
+                    self.conn, text=self.search_var.get(),
+                    category=self.cat_var.get(), tag_name=self.tag_var.get(),
+                    company=self.company_var.get()
+                )
+                export_customers_csv(customers, filepath)
+                messagebox.showinfo("Export",
+                                    f"Exported {len(customers)} customers to CSV.")
+            except (IOError, PermissionError) as e:
+                messagebox.showerror("Export Error", f"Failed to export CSV: {e}")
 
     def _export_pdf(self):
         cid = self._get_selected_id()
@@ -268,14 +272,14 @@ class CustomersTab(ctk.CTkFrame):
         filepath = filedialog.asksaveasfilename(defaultextension=".pdf",
                                                  filetypes=[("PDF files", "*.pdf")])
         if filepath:
-            customer = db.get_customer(self.conn, cid)
-            follow_ups = db.get_follow_ups_for_customer(self.conn, cid)
-            notes = db.get_notes_for_customer(self.conn, cid)
             try:
+                customer = db.get_customer(self.conn, cid)
+                follow_ups = db.get_follow_ups_for_customer(self.conn, cid)
+                notes = db.get_notes_for_customer(self.conn, cid)
                 export_customer_report_pdf(customer, follow_ups, notes, filepath)
                 messagebox.showinfo("Export", "PDF report exported.")
-            except ImportError as e:
-                messagebox.showerror("Error", str(e))
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to export PDF: {e}")
 
 
 class CustomerDialog(ctk.CTkToplevel):
@@ -405,20 +409,29 @@ class CustomerDialog(ctk.CTkToplevel):
             messagebox.showwarning("Validation", "Name is required.", parent=self)
             return
 
+        email = self.entries["email"].get().strip()
+        if email and not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            messagebox.showwarning("Validation", "Invalid email format.", parent=self)
+            return
+
         tag_names = list(self.tag_listbox.get(0, "end"))
         kwargs = {
             "name": name,
             "company": self.entries["company"].get().strip(),
             "phone": self.entries["phone"].get().strip(),
-            "email": self.entries["email"].get().strip(),
+            "email": email,
             "category": self.cat_var.get(),
             "tag_names": tag_names,
         }
 
-        if self.customer:
-            db.update_customer(self.conn, self.customer["id"], **kwargs)
-        else:
-            db.add_customer(self.conn, **kwargs)
+        try:
+            if self.customer:
+                db.update_customer(self.conn, self.customer["id"], **kwargs)
+            else:
+                db.add_customer(self.conn, **kwargs)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save customer: {e}", parent=self)
+            return
 
         self.destroy()
         if self.on_save:

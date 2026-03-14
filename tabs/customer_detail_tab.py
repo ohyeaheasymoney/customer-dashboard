@@ -1,5 +1,6 @@
 """Customer Detail page — 13-tab strategic account workbook with left nav."""
 
+import re
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
@@ -211,6 +212,8 @@ class CustomerDetailTab(ctk.CTkFrame):
     def refresh(self):
         customer = db.get_customer(self.conn, self.customer_id)
         if not customer:
+            # Customer was deleted, close this tab
+            self.after(100, lambda: self.app.close_customer_detail(self.customer_id))
             return
 
         self.name_label.configure(text=customer["name"])
@@ -232,10 +235,13 @@ class CustomerDetailTab(ctk.CTkFrame):
 
     def _edit_customer(self):
         from tabs.customers_tab import CustomerDialog
-        customer = db.get_customer(self.conn, self.customer_id)
-        tags = db.get_customer_tags(self.conn, self.customer_id)
-        CustomerDialog(self, self.conn, customer=customer, tags=tags,
-                       on_save=lambda: self.app.refresh_all_tabs())
+        try:
+            customer = db.get_customer(self.conn, self.customer_id)
+            tags = db.get_customer_tags(self.conn, self.customer_id)
+            CustomerDialog(self, self.conn, customer=customer, tags=tags,
+                           on_save=lambda: self.app.refresh_all_tabs())
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to edit customer: {e}")
 
     def _send_email(self):
         customer = db.get_customer(self.conn, self.customer_id)
@@ -442,6 +448,11 @@ class ComposeEmailDialog(ctk.CTkToplevel):
         if not to or not subject:
             messagebox.showwarning("Validation",
                                     "To and Subject are required.",
+                                    parent=self)
+            return
+
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', to):
+            messagebox.showwarning("Validation", "Invalid email address.",
                                     parent=self)
             return
 

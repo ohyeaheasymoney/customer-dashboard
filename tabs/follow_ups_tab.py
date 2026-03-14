@@ -200,26 +200,35 @@ class FollowUpsTab(ctk.CTkFrame):
     def _mark_completed(self):
         fid = self._get_selected_id()
         if fid:
-            db.complete_follow_up(self.conn, fid)
-            self.app.refresh_all_tabs()
+            try:
+                db.complete_follow_up(self.conn, fid)
+                self.app.refresh_all_tabs()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to complete follow-up: {e}")
 
     def _edit(self):
         fid = self._get_selected_id()
         if fid:
-            row = self.conn.execute(
-                "SELECT customer_id FROM follow_ups WHERE id=?",
-                (fid,)).fetchone()
-            if row:
-                from tabs.customer_detail_tab import FollowUpDialog
-                FollowUpDialog(self, self.conn, row["customer_id"],
-                               follow_up_id=fid,
-                               on_save=lambda: self.app.refresh_all_tabs())
+            try:
+                row = self.conn.execute(
+                    "SELECT customer_id FROM follow_ups WHERE id=?",
+                    (fid,)).fetchone()
+                if row:
+                    from tabs.customer_detail_tab import FollowUpDialog
+                    FollowUpDialog(self, self.conn, row["customer_id"],
+                                   follow_up_id=fid,
+                                   on_save=lambda: self.app.refresh_all_tabs())
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to edit follow-up: {e}")
 
     def _delete(self):
         fid = self._get_selected_id()
         if fid and messagebox.askyesno("Confirm", "Delete this follow-up?"):
-            db.delete_follow_up(self.conn, fid)
-            self.app.refresh_all_tabs()
+            try:
+                db.delete_follow_up(self.conn, fid)
+                self.app.refresh_all_tabs()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to delete follow-up: {e}")
 
     def _send_email(self):
         fid = self._get_selected_id()
@@ -232,9 +241,11 @@ class FollowUpsTab(ctk.CTkFrame):
             ).fetchone()
             if row:
                 customer = db.get_customer(self.conn, row["customer_id"])
-                if customer:
-                    from tabs.customer_detail_tab import ComposeEmailDialog
-                    ComposeEmailDialog(self, self.conn, customer)
+                if not customer:
+                    messagebox.showwarning("Error", "Customer no longer exists.")
+                    return
+                from tabs.customer_detail_tab import ComposeEmailDialog
+                ComposeEmailDialog(self, self.conn, customer)
 
     def _export_csv(self):
         filepath = filedialog.asksaveasfilename(

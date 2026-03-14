@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import sqlite3
 from datetime import datetime
 
 
@@ -15,11 +16,27 @@ def backup_database(db_path, backup_dir):
     backup_name = f"{base}_{timestamp}.db"
     backup_path = os.path.join(backup_dir, backup_name)
     shutil.copy2(db_path, backup_path)
+    # Verify backup
+    test_conn = sqlite3.connect(backup_path)
+    result = test_conn.execute("PRAGMA integrity_check").fetchone()
+    test_conn.close()
+    if result[0] != "ok":
+        os.unlink(backup_path)
+        raise RuntimeError("Backup verification failed")
     return backup_path
 
 
 def restore_database(backup_path, db_path):
     """Replace current DB file with selected backup."""
+    # Verify backup is valid SQLite
+    try:
+        test_conn = sqlite3.connect(backup_path)
+        result = test_conn.execute("PRAGMA integrity_check").fetchone()
+        test_conn.close()
+        if result[0] != "ok":
+            raise ValueError("Backup file is corrupted")
+    except sqlite3.DatabaseError:
+        raise ValueError("Selected file is not a valid SQLite database")
     shutil.copy2(backup_path, db_path)
 
 

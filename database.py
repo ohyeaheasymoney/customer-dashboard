@@ -1,210 +1,268 @@
 """Database connection, schema initialization, and all CRUD functions."""
 
+import re
 import sqlite3
 from datetime import datetime
+
+# --- Constants / Enums ---
+CATEGORIES = ("VIP", "Lead", "Active", "Inactive")
+FOLLOW_UP_TYPES = ("call", "email", "meeting")
+FOLLOW_UP_STATUSES = ("pending", "completed")
+
+SCHEMA_VERSION = 2
 
 
 def get_connection(db_path="customers.db"):
     """Create and return a database connection with foreign keys enabled."""
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
     conn.row_factory = sqlite3.Row
     return conn
 
 
+# --- Input Validation Helpers ---
+
+def validate_email(email):
+    """Return True if *email* looks valid (or is empty/None, since it's optional)."""
+    if not email:
+        return True  # optional field
+    return bool(re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email))
+
+
+def validate_date(date_str):
+    """Return True if *date_str* is a valid YYYY-MM-DD date string."""
+    try:
+        datetime.strptime(date_str, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+
+# --- Integrity Check ---
+
+def check_integrity(conn):
+    """Run SQLite integrity check; return True when the database is healthy."""
+    result = conn.execute("PRAGMA integrity_check").fetchone()
+    return result[0] == "ok"
+
+
+# --- Schema Initialization with Versioning ---
+
+_ORIGINAL_SCHEMA = """
+    CREATE TABLE IF NOT EXISTS customers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        company TEXT DEFAULT '',
+        phone TEXT DEFAULT '',
+        email TEXT DEFAULT '',
+        category TEXT DEFAULT 'Active',
+        created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS follow_ups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        due_date TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'call',
+        status TEXT NOT NULL DEFAULT 'pending',
+        description TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        completed_at TEXT,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS customer_tags (
+        customer_id INTEGER NOT NULL,
+        tag_id INTEGER NOT NULL,
+        PRIMARY KEY (customer_id, tag_id),
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+        FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS activity_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        detail TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS account_resources (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        role TEXT NOT NULL,
+        name TEXT DEFAULT '',
+        email TEXT DEFAULT '',
+        phone TEXT DEFAULT '',
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS meeting_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        meeting_date TEXT NOT NULL,
+        audience TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS business_initiatives (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        section TEXT NOT NULL,
+        content TEXT DEFAULT '',
+        sort_order INTEGER DEFAULT 0,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS contact_development (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        title TEXT DEFAULT '',
+        relationship TEXT DEFAULT 'Unknown',
+        influence TEXT DEFAULT 'Influencer',
+        phone TEXT DEFAULT '',
+        email TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS account_goals_meta (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL UNIQUE,
+        moonshot TEXT DEFAULT '',
+        objectives TEXT DEFAULT '',
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS account_goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        term TEXT NOT NULL DEFAULT 'short',
+        goal TEXT DEFAULT '',
+        status TEXT DEFAULT 'Not Started',
+        notes TEXT DEFAULT '',
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS action_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        what TEXT DEFAULT '',
+        who TEXT DEFAULT '',
+        how TEXT DEFAULT '',
+        due_date TEXT DEFAULT '',
+        status TEXT DEFAULT 'On Track',
+        notes TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS cph_report (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        category TEXT NOT NULL,
+        month_1 REAL DEFAULT 0,
+        month_2 REAL DEFAULT 0,
+        month_3 REAL DEFAULT 0,
+        month_4 REAL DEFAULT 0,
+        month_5 REAL DEFAULT 0,
+        month_6 REAL DEFAULT 0,
+        month_7 REAL DEFAULT 0,
+        month_8 REAL DEFAULT 0,
+        month_9 REAL DEFAULT 0,
+        month_10 REAL DEFAULT 0,
+        month_11 REAL DEFAULT 0,
+        month_12 REAL DEFAULT 0,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS hw_sw_landscape (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        category TEXT DEFAULT '',
+        item TEXT DEFAULT '',
+        vendor TEXT DEFAULT '',
+        version TEXT DEFAULT '',
+        qty INTEGER DEFAULT 0,
+        support_status TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS application_landscape (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        app_name TEXT DEFAULT '',
+        criticality TEXT DEFAULT 'Standard',
+        hosting TEXT DEFAULT '',
+        owner TEXT DEFAULT '',
+        opportunities TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS service_landscape (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        service TEXT DEFAULT '',
+        incumbent TEXT DEFAULT '',
+        contract_end TEXT DEFAULT '',
+        annual_value REAL DEFAULT 0,
+        notes TEXT DEFAULT '',
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS account_text_sections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        section TEXT NOT NULL,
+        content TEXT DEFAULT '',
+        updated_at TEXT,
+        UNIQUE(customer_id, section),
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+"""
+
+
 def init_db(conn):
-    """Create all tables if they don't exist."""
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS customers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            company TEXT DEFAULT '',
-            phone TEXT DEFAULT '',
-            email TEXT DEFAULT '',
-            category TEXT DEFAULT 'Active',
-            created_at TEXT NOT NULL
-        );
+    """Create all tables if they don't exist, with schema versioning."""
+    # Ensure the schema_version table exists
+    conn.execute("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER)")
+    row = conn.execute("SELECT version FROM schema_version").fetchone()
+    current = row["version"] if row else 0
 
-        CREATE TABLE IF NOT EXISTS follow_ups (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            due_date TEXT NOT NULL,
-            type TEXT NOT NULL DEFAULT 'call',
-            status TEXT NOT NULL DEFAULT 'pending',
-            description TEXT DEFAULT '',
-            created_at TEXT NOT NULL,
-            completed_at TEXT,
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
+    if current < 1:
+        # Original schema
+        conn.executescript(_ORIGINAL_SCHEMA)
 
-        CREATE TABLE IF NOT EXISTS notes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            content TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
+    if current < 2:
+        # Future migration slot -- add new columns/tables here using
+        # try/except around ALTER TABLE to handle "already exists" gracefully.
+        pass
 
-        CREATE TABLE IF NOT EXISTS tags (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS customer_tags (
-            customer_id INTEGER NOT NULL,
-            tag_id INTEGER NOT NULL,
-            PRIMARY KEY (customer_id, tag_id),
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
-            FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS activity_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            action TEXT NOT NULL,
-            detail TEXT DEFAULT '',
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS account_resources (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            role TEXT NOT NULL,
-            name TEXT DEFAULT '',
-            email TEXT DEFAULT '',
-            phone TEXT DEFAULT '',
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS meeting_notes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            meeting_date TEXT NOT NULL,
-            audience TEXT DEFAULT '',
-            notes TEXT DEFAULT '',
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS business_initiatives (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            section TEXT NOT NULL,
-            content TEXT DEFAULT '',
-            sort_order INTEGER DEFAULT 0,
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS contact_development (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            title TEXT DEFAULT '',
-            relationship TEXT DEFAULT 'Unknown',
-            influence TEXT DEFAULT 'Influencer',
-            phone TEXT DEFAULT '',
-            email TEXT DEFAULT '',
-            notes TEXT DEFAULT '',
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS account_goals_meta (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL UNIQUE,
-            moonshot TEXT DEFAULT '',
-            objectives TEXT DEFAULT '',
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS account_goals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            term TEXT NOT NULL DEFAULT 'short',
-            goal TEXT DEFAULT '',
-            status TEXT DEFAULT 'Not Started',
-            notes TEXT DEFAULT '',
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS action_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            what TEXT DEFAULT '',
-            who TEXT DEFAULT '',
-            how TEXT DEFAULT '',
-            due_date TEXT DEFAULT '',
-            status TEXT DEFAULT 'On Track',
-            notes TEXT DEFAULT '',
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS cph_report (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            category TEXT NOT NULL,
-            month_1 REAL DEFAULT 0,
-            month_2 REAL DEFAULT 0,
-            month_3 REAL DEFAULT 0,
-            month_4 REAL DEFAULT 0,
-            month_5 REAL DEFAULT 0,
-            month_6 REAL DEFAULT 0,
-            month_7 REAL DEFAULT 0,
-            month_8 REAL DEFAULT 0,
-            month_9 REAL DEFAULT 0,
-            month_10 REAL DEFAULT 0,
-            month_11 REAL DEFAULT 0,
-            month_12 REAL DEFAULT 0,
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS hw_sw_landscape (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            category TEXT DEFAULT '',
-            item TEXT DEFAULT '',
-            vendor TEXT DEFAULT '',
-            version TEXT DEFAULT '',
-            qty INTEGER DEFAULT 0,
-            support_status TEXT DEFAULT '',
-            notes TEXT DEFAULT '',
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS application_landscape (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            app_name TEXT DEFAULT '',
-            criticality TEXT DEFAULT 'Standard',
-            hosting TEXT DEFAULT '',
-            owner TEXT DEFAULT '',
-            opportunities TEXT DEFAULT '',
-            notes TEXT DEFAULT '',
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS service_landscape (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            service TEXT DEFAULT '',
-            incumbent TEXT DEFAULT '',
-            contract_end TEXT DEFAULT '',
-            annual_value REAL DEFAULT 0,
-            notes TEXT DEFAULT '',
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS account_text_sections (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            section TEXT NOT NULL,
-            content TEXT DEFAULT '',
-            updated_at TEXT,
-            UNIQUE(customer_id, section),
-            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-        );
-    """)
+    # Persist the version
+    if current == 0:
+        conn.execute("INSERT INTO schema_version (version) VALUES (?)", (SCHEMA_VERSION,))
+    else:
+        conn.execute("UPDATE schema_version SET version = ?", (SCHEMA_VERSION,))
     conn.commit()
 
 
@@ -222,33 +280,45 @@ def _log_activity(conn, customer_id, action, detail=""):
 # --- Customers ---
 
 def add_customer(conn, name, company="", phone="", email="", category="Active", tag_names=None):
-    now = _now()
-    cur = conn.execute(
-        "INSERT INTO customers (name, company, phone, email, category, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (name, company, phone, email, category, now)
-    )
-    customer_id = cur.lastrowid
-    if tag_names:
-        _set_customer_tags(conn, customer_id, tag_names)
-    _log_activity(conn, customer_id, "created", f"Customer '{name}' created")
-    conn.commit()
-    return customer_id
+    try:
+        now = _now()
+        cur = conn.execute(
+            "INSERT INTO customers (name, company, phone, email, category, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (name, company, phone, email, category, now)
+        )
+        customer_id = cur.lastrowid
+        if tag_names:
+            _set_customer_tags(conn, customer_id, tag_names)
+        _log_activity(conn, customer_id, "created", f"Customer '{name}' created")
+        conn.commit()
+        return customer_id
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def update_customer(conn, customer_id, name, company="", phone="", email="", category="Active", tag_names=None):
-    conn.execute(
-        "UPDATE customers SET name=?, company=?, phone=?, email=?, category=? WHERE id=?",
-        (name, company, phone, email, category, customer_id)
-    )
-    if tag_names is not None:
-        _set_customer_tags(conn, customer_id, tag_names)
-    _log_activity(conn, customer_id, "edited", f"Customer '{name}' updated")
-    conn.commit()
+    try:
+        conn.execute(
+            "UPDATE customers SET name=?, company=?, phone=?, email=?, category=? WHERE id=?",
+            (name, company, phone, email, category, customer_id)
+        )
+        if tag_names is not None:
+            _set_customer_tags(conn, customer_id, tag_names)
+        _log_activity(conn, customer_id, "edited", f"Customer '{name}' updated")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def delete_customer(conn, customer_id):
-    conn.execute("DELETE FROM customers WHERE id=?", (customer_id,))
-    conn.commit()
+    try:
+        conn.execute("DELETE FROM customers WHERE id=?", (customer_id,))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def get_customer(conn, customer_id):
@@ -333,49 +403,65 @@ def get_all_tags(conn):
 # --- Follow-ups ---
 
 def add_follow_up(conn, customer_id, due_date, type_="call", description=""):
-    now = _now()
-    cur = conn.execute(
-        "INSERT INTO follow_ups (customer_id, due_date, type, status, description, created_at) VALUES (?, ?, ?, 'pending', ?, ?)",
-        (customer_id, due_date, type_, description, now)
-    )
-    _log_activity(conn, customer_id, "follow_up_added",
-                  f"Follow-up added: {type_} on {due_date}")
-    conn.commit()
-    return cur.lastrowid
+    try:
+        now = _now()
+        cur = conn.execute(
+            "INSERT INTO follow_ups (customer_id, due_date, type, status, description, created_at) VALUES (?, ?, ?, 'pending', ?, ?)",
+            (customer_id, due_date, type_, description, now)
+        )
+        _log_activity(conn, customer_id, "follow_up_added",
+                      f"Follow-up added: {type_} on {due_date}")
+        conn.commit()
+        return cur.lastrowid
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def update_follow_up(conn, follow_up_id, due_date, type_="call", description=""):
-    row = conn.execute("SELECT customer_id FROM follow_ups WHERE id=?", (follow_up_id,)).fetchone()
-    if row:
-        conn.execute(
-            "UPDATE follow_ups SET due_date=?, type=?, description=? WHERE id=?",
-            (due_date, type_, description, follow_up_id)
-        )
-        _log_activity(conn, row["customer_id"], "follow_up_edited",
-                      f"Follow-up updated: {type_} on {due_date}")
-        conn.commit()
+    try:
+        row = conn.execute("SELECT customer_id FROM follow_ups WHERE id=?", (follow_up_id,)).fetchone()
+        if row:
+            conn.execute(
+                "UPDATE follow_ups SET due_date=?, type=?, description=? WHERE id=?",
+                (due_date, type_, description, follow_up_id)
+            )
+            _log_activity(conn, row["customer_id"], "follow_up_edited",
+                          f"Follow-up updated: {type_} on {due_date}")
+            conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def complete_follow_up(conn, follow_up_id):
-    now = _now()
-    row = conn.execute("SELECT customer_id, type, due_date FROM follow_ups WHERE id=?", (follow_up_id,)).fetchone()
-    if row:
-        conn.execute(
-            "UPDATE follow_ups SET status='completed', completed_at=? WHERE id=?",
-            (now, follow_up_id)
-        )
-        _log_activity(conn, row["customer_id"], "status_changed",
-                      f"Follow-up marked completed: {row['type']} on {row['due_date']}")
-        conn.commit()
+    try:
+        now = _now()
+        row = conn.execute("SELECT customer_id, type, due_date FROM follow_ups WHERE id=?", (follow_up_id,)).fetchone()
+        if row:
+            conn.execute(
+                "UPDATE follow_ups SET status='completed', completed_at=? WHERE id=?",
+                (now, follow_up_id)
+            )
+            _log_activity(conn, row["customer_id"], "status_changed",
+                          f"Follow-up marked completed: {row['type']} on {row['due_date']}")
+            conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def delete_follow_up(conn, follow_up_id):
-    row = conn.execute("SELECT customer_id, type, due_date FROM follow_ups WHERE id=?", (follow_up_id,)).fetchone()
-    if row:
-        _log_activity(conn, row["customer_id"], "follow_up_deleted",
-                      f"Follow-up deleted: {row['type']} on {row['due_date']}")
-    conn.execute("DELETE FROM follow_ups WHERE id=?", (follow_up_id,))
-    conn.commit()
+    try:
+        row = conn.execute("SELECT customer_id, type, due_date FROM follow_ups WHERE id=?", (follow_up_id,)).fetchone()
+        if row:
+            _log_activity(conn, row["customer_id"], "follow_up_deleted",
+                          f"Follow-up deleted: {row['type']} on {row['due_date']}")
+        conn.execute("DELETE FROM follow_ups WHERE id=?", (follow_up_id,))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def get_follow_ups_for_customer(conn, customer_id):
@@ -424,13 +510,17 @@ def get_all_follow_ups(conn, status="All", type_="All", date_from=None, date_to=
 # --- Notes ---
 
 def add_note(conn, customer_id, content):
-    now = _now()
-    conn.execute(
-        "INSERT INTO notes (customer_id, content, created_at) VALUES (?, ?, ?)",
-        (customer_id, content, now)
-    )
-    _log_activity(conn, customer_id, "note_added", f"Note added")
-    conn.commit()
+    try:
+        now = _now()
+        conn.execute(
+            "INSERT INTO notes (customer_id, content, created_at) VALUES (?, ?, ?)",
+            (customer_id, content, now)
+        )
+        _log_activity(conn, customer_id, "note_added", f"Note added")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def get_notes_for_customer(conn, customer_id):

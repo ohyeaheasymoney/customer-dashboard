@@ -1,6 +1,7 @@
 """Main App: sidebar navigation + content frame orchestration, menu bar."""
 
 import os
+import logging
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
@@ -13,6 +14,13 @@ from tabs.dashboard_tab import DashboardTab
 from tabs.customers_tab import CustomersTab
 from tabs.follow_ups_tab import FollowUpsTab
 from tabs.customer_detail_tab import CustomerDetailTab
+
+logging.basicConfig(
+    filename=os.path.join(os.path.dirname(__file__), "app.log"),
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "customers.db")
@@ -83,8 +91,20 @@ class App(ctk.CTkFrame):
         self._ttk_style = _configure_treeview_style()
 
         # Database
-        self.conn = db.get_connection(DB_PATH)
-        db.init_db(self.conn)
+        try:
+            self.conn = db.get_connection(DB_PATH)
+            db.init_db(self.conn)
+            logger.info("Application started, database connected: %s", DB_PATH)
+        except Exception as e:
+            logger.error("Failed to open database: %s", e)
+            messagebox.showerror("Database Error",
+                f"Failed to open database:\n{e}\n\nTry restoring from a backup.")
+            # Still create connection to empty DB so app doesn't crash
+            self.conn = db.get_connection(":memory:")
+            db.init_db(self.conn)
+
+        # Close DB on window close
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         # Menu bar
         self._build_menu()
@@ -122,6 +142,24 @@ class App(ctk.CTkFrame):
 
         # Initial refresh
         self.refresh_all_tabs()
+
+    def _on_close(self):
+        """Close DB connection and destroy the application window."""
+        logger.info("Application shutting down.")
+        try:
+            self.conn.close()
+        except Exception:
+            pass
+        self.root.destroy()
+
+    def _update_all_connections(self):
+        """Update conn reference in all tabs after a restore."""
+        self.dashboard_tab.conn = self.conn
+        self.customers_tab.conn = self.conn
+        self.follow_ups_tab.conn = self.conn
+        for page_name in self.detail_tabs.values():
+            if page_name in self.pages:
+                self.pages[page_name].conn = self.conn
 
     def _build_sidebar(self):
         """Build the sidebar navigation."""
@@ -287,7 +325,7 @@ class App(ctk.CTkFrame):
         file_menu.add_command(label="  Backup Database", command=self._backup)
         file_menu.add_command(label="  Restore from Backup...", command=self._restore)
         file_menu.add_separator()
-        file_menu.add_command(label="  Exit", command=self.root.quit)
+        file_menu.add_command(label="  Exit", command=self._on_close)
 
     def refresh_all_tabs(self):
         self.dashboard_tab.refresh()
@@ -309,6 +347,7 @@ class App(ctk.CTkFrame):
 
         customer = db.get_customer(self.conn, customer_id)
         if not customer:
+            messagebox.showwarning("Not Found", "Customer no longer exists.")
             return
 
         # Show detail section separator/label if this is the first detail tab
@@ -377,8 +416,10 @@ class App(ctk.CTkFrame):
     def _backup(self):
         try:
             path = backup_database(DB_PATH, BACKUP_DIR)
+            logger.info("Database backed up to: %s", path)
             messagebox.showinfo("Backup", f"Database backed up to:\n{path}")
         except Exception as e:
+            logger.error("Backup failed: %s", e)
             messagebox.showerror("Backup Error", str(e))
 
     def _restore(self):
@@ -389,6 +430,10 @@ class App(ctk.CTkFrame):
         )
         if not filepath:
             return
+        # Validate filepath is a .db file
+        if not filepath.endswith('.db'):
+            messagebox.showerror("Error", "Please select a valid .db file.")
+            return
         if not messagebox.askyesno("Confirm Restore",
                                     "This will replace the current database with the selected backup.\nContinue?"):
             return
@@ -396,16 +441,24 @@ class App(ctk.CTkFrame):
             self.conn.close()
             restore_database(filepath, DB_PATH)
             self.conn = db.get_connection(DB_PATH)
-            # Update connection references in all tabs
-            self.dashboard_tab.conn = self.conn
-            self.customers_tab.conn = self.conn
-            self.follow_ups_tab.conn = self.conn
-            # Close all detail tabs
+            # Verify integrity
+            if not db.check_integrity(self.conn):
+                messagebox.showwarning("Warning", "Restored database may be corrupted.")
+            # Update conn references
+            self._update_all_connections()
+            # Close detail tabs
             for cid in list(self.detail_tabs.keys()):
                 self.close_customer_detail(cid)
             self.refresh_all_tabs()
+            logger.info("Database restored from: %s", filepath)
             messagebox.showinfo("Restore", "Database restored successfully.")
         except Exception as e:
+            logger.error("Restore failed: %s", e)
+            # Try to reconnect to original DB
+            try:
+                self.conn = db.get_connection(DB_PATH)
+            except Exception:
+                pass
             messagebox.showerror("Restore Error", str(e))
 
 
